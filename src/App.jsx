@@ -2,42 +2,36 @@ import { useState, useEffect } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
+import ElencoTurni from './pages/elencoTurni';
+import ElencoPresenzeTurno from './pages/ElencoPresenzeTurno';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [count, setCount] = useState(0);
+  const [turnoAttuale, setTurnoAttuale] = useState('');
+
+  const turnoSelezionato = (turno) => {
+    console.log("turno selezionato in ElencoTurni:", turno);
+    setTurnoAttuale(turno);
+  }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const token = params.get('token')
-
     if (token) {
-      console.log('Token trovato:', token)
       localStorage.setItem('token', token)
     } else {
       console.log('Token non trovato:')
     }
-  }, [])
 
-  // Sposta login qui dentro
-  function login() {
-    fetch('https://gestione.parrocchiacarpaneto.com/servizi/api/turni/recuperaTurni.php?year=2025', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Customauthorization': 'Bearer ' + localStorage.getItem('token') // Usa il token salvato
-      }
-    })
-      .then(res => res.json())
-      .then(data => {
-        localStorage.setItem('token', data.token)
-        console.log(data)
-      })
-  }
-  
+  }, [])
 
   return (
     <>
-     <button onClick={login}>Login</button>
+
+    <ElencoTurni turnoSelezionato={turnoSelezionato}></ElencoTurni>
+
+    <ElencoPresenzeTurno idTurno={turnoAttuale.id}></ElencoPresenzeTurno>
+
       <div>
         <a href="https://vite.dev" target="_blank">
           <img src={viteLogo} className="logo" alt="Vite logo" />
