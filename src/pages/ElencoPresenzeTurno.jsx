@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import TurniApi from "../services/TurniApi";
 
-export default function ElencoPresenzeTurno({idTurno}) {
+export default function ElencoPresenzeTurno({idTurno, anagraficaSelezionata}) {
   const [presenze, setPresenze] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -20,6 +20,12 @@ export default function ElencoPresenzeTurno({idTurno}) {
 
   }, [idTurno]);
 
+  const selezionaAnagrafica = (anagrafica) => {
+    console.log("anagrafica", anagrafica);
+    anagraficaSelezionata(anagrafica);
+  }
+
+
   if (isLoading) {
     return (
       <>
@@ -36,7 +42,9 @@ export default function ElencoPresenzeTurno({idTurno}) {
           presenze.map((data) => {
             return (
               <li key={data.idanag}>
-                {data.nome} {data.cognome}
+                <button key={data.id} onClick={() => selezionaAnagrafica(data)}>
+                  {data.nome} {data.cognome}
+                </button>
               </li>
             );
           })}
