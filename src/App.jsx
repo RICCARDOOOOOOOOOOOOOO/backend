@@ -4,14 +4,20 @@ import viteLogo from '/vite.svg'
 import './App.css'
 import ElencoTurni from './pages/elencoTurni';
 import ElencoPresenzeTurno from './pages/ElencoPresenzeTurno';
+import DettaglioCassa from './pages/DettaglioCassa';
 
 function App() {
   const [count, setCount] = useState(0);
   const [turnoAttuale, setTurnoAttuale] = useState('');
+  const [anagraficaAttuale, setAnagraficaAttuale] = useState('');
 
   const turnoSelezionato = (turno) => {
-    console.log("turno selezionato in ElencoTurni:", turno);
     setTurnoAttuale(turno);
+  }
+
+  const anagraficaSelezionata = (anagrafica) => {
+    console.log("app anagraficaSelezionata", anagrafica);
+    setAnagraficaAttuale(anagrafica);
   }
 
   useEffect(() => {
@@ -30,7 +36,9 @@ function App() {
 
     <ElencoTurni turnoSelezionato={turnoSelezionato}></ElencoTurni>
 
-    <ElencoPresenzeTurno idTurno={turnoAttuale.id}></ElencoPresenzeTurno>
+    <DettaglioCassa id_turno={turnoAttuale.id} id_anag={anagraficaAttuale.idanag}></DettaglioCassa>
+
+    <ElencoPresenzeTurno idTurno={turnoAttuale.id} anagraficaSelezionata={anagraficaSelezionata}></ElencoPresenzeTurno>
 
       <div>
         <a href="https://vite.dev" target="_blank">
