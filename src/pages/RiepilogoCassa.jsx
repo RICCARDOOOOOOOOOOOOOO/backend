@@ -30,6 +30,29 @@ export default function RiepilogoCassa({id_turno, anagraficaSelezionata}) {
     });    
   }
 
+  function creaPdfCassa(cassaSelezionata) {
+    CassaApi.creaPdfCassa(id_turno, cassaSelezionata.id_anag).then((response) => {
+        var pdf_newTab = window.open("");
+        if (pdf_newTab) {
+          pdf_newTab.document.write(
+              "<html><head><title>cassa</title></head><body><iframe title='cassa " + cassaSelezionata.cognome + "'  width='100%' height='100%' src='data:application/pdf;base64, " +    encodeURI(response) + "'></iframe></body></html>"
+          );
+        } else {
+          console.error("Failed to open a new tab. Please check your browser's popup blocker settings.");
+        }
+      });
+  }
+
+  function invioMailCassa(cassaSelezionata) {
+    CassaApi.invioMailCassa(id_turno, cassaSelezionata.id_anag).then((response) => {
+        if (response.result == 1) {
+          alert(response.returnMessages[0]);
+        } else {
+          console.error("response invio mail:", response);      
+        }   
+      });
+  }
+
   if (isLoading) {
     return (
       <>
@@ -51,6 +74,8 @@ export default function RiepilogoCassa({id_turno, anagraficaSelezionata}) {
             <th>tot. versato</th>
             <th>tot. spesa</th>
             <th>tot. in cassa</th>
+            <th></th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -64,6 +89,8 @@ export default function RiepilogoCassa({id_turno, anagraficaSelezionata}) {
                 <td>{data.totale_versato}</td>
                 <td>{data.totale_spesa}</td>
                 <td>{data.totale_in_cassa}</td>
+                <td><button onClick={() => creaPdfCassa(data)}>pdf</button></td>
+                <td><button onClick={() => invioMailCassa(data)}>mail</button></td>
               </tr>
             );
           })}

@@ -61,17 +61,31 @@ export default function DettaglioCassa({id_turno, id_anag}) {
     <div class="background_green">
       <h2>Cassa</h2>
       <h1>{cassa.cognome} {cassa.nome}</h1>
-      <ul>
+      <table>
+        <thead>
+          <tr>
+            <td>data</td>
+            <td>tipo</td>
+            <td>valore</td>
+            <td></td>
+          </tr>
+        </thead>
+        <tbody>
+          
         {cassa &&
           cassa?.inserimenti?.map((data) => {
-            return (
-              <li key={data.id}>
-                {data.insert_date} {data.type} {data.value} 
-                <button onClick={() => eliminaVoceCassa(data.id)}>elimina voce</button>
-              </li>
+            return (              
+              <tr key={data.id}>
+                <td>{data.insert_date}</td>
+                <td>{data.type}</td>
+                <td>{data.value}</td>
+                <td><button onClick={() => eliminaVoceCassa(data.id)}>elimina voce</button></td>                
+              </tr>
             );
           })}
-      </ul>
+
+        </tbody>
+      </table>
 
       <hr></hr>
 

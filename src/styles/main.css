@@ -23,6 +23,12 @@
      background-color: pink;
  }
 
+  .background_darkcyan {
+     padding: 10px;
+     background-color: darkcyan;
+ }
+
+
  table, th, td {
   border: 1px solid black;
 }

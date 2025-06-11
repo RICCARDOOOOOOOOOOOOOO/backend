@@ -28,6 +28,25 @@ async function recuperaRiepilogoCassa(id_turno) {
   return response;
 }
 
+async function recuperaTotaliCassa(id_turno) {
+  let postData = { id_turno: id_turno };
+  const response = await apiClient.post(`/turni/recuperaTotaliCassa.php`, postData);
+  return response;
+}
+
+async function creaPdfCassa(id_turno, id_anag) {
+  let postData = { id_turno: id_turno, id_anag: id_anag };
+  const response = await apiClient.post(`/turni/creaPdfCassa.php`, postData);
+  return response.returnObject;
+}
+
+async function invioMailCassa(id_turno, id_anag) {
+  let postData = [{ id_turno: id_turno, id_anag: id_anag }];
+  console.log("invioMailCassa postData", postData);
+  const response = await apiClient.post(`/turni/invioMailCassa.php`, postData);
+  return response;
+}
+
 async function completaCassaDaResponse(response, id_anag) {
   let cassa = new CassaDto();
   response.forEach((element) => {
@@ -71,4 +90,4 @@ async function completaCassaDaResponse(response, id_anag) {
   return cassa;
 }
 
-export default { recuperaCassa, inserisciInCassa, eliminaVoceCassa, recuperaRiepilogoCassa };
+export default { recuperaCassa, inserisciInCassa, eliminaVoceCassa, recuperaRiepilogoCassa, recuperaTotaliCassa, creaPdfCassa, invioMailCassa };

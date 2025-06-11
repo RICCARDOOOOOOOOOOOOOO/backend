@@ -6,6 +6,7 @@ import ElencoTurni from './pages/elencoTurni';
 import ElencoPresenzeTurno from './pages/ElencoPresenzeTurno';
 import DettaglioCassa from './pages/DettaglioCassa';
 import RiepilogoCassa from './pages/RiepilogoCassa';
+import TotaliCassa from './pages/TotaliCassa';
 
 function App() {
   const [count, setCount] = useState(0);
@@ -42,6 +43,8 @@ function App() {
     <DettaglioCassa id_turno={turnoAttuale.id} id_anag={anagraficaAttuale.idanag}></DettaglioCassa>
 
     <RiepilogoCassa id_turno={turnoAttuale.id} anagraficaSelezionata={anagraficaSelezionata}></RiepilogoCassa>
+
+    <TotaliCassa id_turno={turnoAttuale.id} ></TotaliCassa>
 
     <ElencoPresenzeTurno idTurno={turnoAttuale.id} anagraficaSelezionata={anagraficaSelezionata}></ElencoPresenzeTurno>
 
