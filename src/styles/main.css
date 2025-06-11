@@ -17,3 +17,12 @@
      padding: 10px;
      background-color: yellow;
  }
+
+  .background_pink {
+     padding: 10px;
+     background-color: pink;
+ }
+
+ table, th, td {
+  border: 1px solid black;
+}

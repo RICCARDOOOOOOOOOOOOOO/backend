@@ -22,6 +22,12 @@ async function eliminaVoceCassa(id, id_anag, id_turno) {
   return cassa;
 }
 
+async function recuperaRiepilogoCassa(id_turno) {
+  let postData = { id_turno: id_turno };
+  const response = await apiClient.post(`/turni/recuperaRiepilogoCassa.php`, postData);
+  return response;
+}
+
 async function completaCassaDaResponse(response, id_anag) {
   let cassa = new CassaDto();
   response.forEach((element) => {
@@ -65,4 +71,4 @@ async function completaCassaDaResponse(response, id_anag) {
   return cassa;
 }
 
-export default { recuperaCassa, inserisciInCassa, eliminaVoceCassa };
+export default { recuperaCassa, inserisciInCassa, eliminaVoceCassa, recuperaRiepilogoCassa };

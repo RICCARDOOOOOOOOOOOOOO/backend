@@ -5,6 +5,7 @@ import './App.css'
 import ElencoTurni from './pages/elencoTurni';
 import ElencoPresenzeTurno from './pages/ElencoPresenzeTurno';
 import DettaglioCassa from './pages/DettaglioCassa';
+import RiepilogoCassa from './pages/RiepilogoCassa';
 
 function App() {
   const [count, setCount] = useState(0);
@@ -39,6 +40,8 @@ function App() {
     <ElencoTurni turnoSelezionato={turnoSelezionato}></ElencoTurni>
 
     <DettaglioCassa id_turno={turnoAttuale.id} id_anag={anagraficaAttuale.idanag}></DettaglioCassa>
+
+    <RiepilogoCassa id_turno={turnoAttuale.id} anagraficaSelezionata={anagraficaSelezionata}></RiepilogoCassa>
 
     <ElencoPresenzeTurno idTurno={turnoAttuale.id} anagraficaSelezionata={anagraficaSelezionata}></ElencoPresenzeTurno>
 
