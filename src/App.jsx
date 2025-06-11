@@ -117,6 +117,8 @@ export default function App() {
       </button>
 
       <h1 className="text-4xl font-bold mb-6">Cassa</h1>
+      <div className="mt-8 text-4xl font-bold text-fuchsia-600">Tailwind è attivo 🎉</div>
+
 
       <select
         className="mb-8 p-2 rounded-xl shadow border focus:outline-none focus:ring"
