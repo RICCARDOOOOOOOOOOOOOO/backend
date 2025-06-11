@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import TurniApi from "../services/TurniApi";
+import "../styles/main.css"
 
 export default function ElencoPresenzeTurno({idTurno, anagraficaSelezionata}) {
   const [presenze, setPresenze] = useState([]);
@@ -36,6 +37,8 @@ export default function ElencoPresenzeTurno({idTurno, anagraficaSelezionata}) {
 
   return (
     <>
+
+    <div class="background_red">
       <h2>Presenze</h2>
       <ul>
         {presenze &&
@@ -49,6 +52,7 @@ export default function ElencoPresenzeTurno({idTurno, anagraficaSelezionata}) {
             );
           })}
       </ul>
+      </div>
     </>
   );
 }

@@ -26,13 +26,15 @@ function App() {
     if (token) {
       localStorage.setItem('token', token)
     } else {
-      console.log('Token non trovato:')
+      console.log('Token non trovato in url')
+      console.log('Token in localStorage:',localStorage.getItem('token'));
     }
 
   }, [])
 
   return (
     <>
+    <a href="https://gestione.parrocchiacarpaneto.com/login/#/?returnUrl=http://localhost:5173">Rifai la login</a>
 
     <ElencoTurni turnoSelezionato={turnoSelezionato}></ElencoTurni>
 

@@ -4,7 +4,25 @@ import { CassaDto, VoceCassaDto } from "./../models/CassaDto";
 async function recuperaCassa(id_anag, id_turno) {
   let postData = { id_anag: id_anag, id_turno: id_turno };
   const response = await apiClient.post(`/turni/recuperaCassa.php`, postData);
+  let cassa = await completaCassaDaResponse(response, id_anag);
+  return cassa;
+}
 
+async function inserisciInCassa(id_anag, id_turno, value, type) {
+  let postData = { id_anag: id_anag, id_turno: id_turno, value: value, type: type };
+  const response = await apiClient.post(`/turni/inserisciInCassa.php`, postData);
+  let cassa = await completaCassaDaResponse(response, id_anag);
+  return cassa;
+}
+
+async function eliminaVoceCassa(id, id_anag, id_turno) {
+  let postData = { id: id, id_anag: id_anag, id_turno: id_turno };
+  const response = await apiClient.post(`/turni/eliminaVoceCassa.php`, postData);
+  let cassa = await completaCassaDaResponse(response, id_anag);
+  return cassa;
+}
+
+async function completaCassaDaResponse(response, id_anag) {
   let cassa = new CassaDto();
   response.forEach((element) => {
     if (cassa.nome == null) {
@@ -44,8 +62,7 @@ async function recuperaCassa(id_anag, id_turno) {
     cassa.totaleSpesa = 0;
     cassa.totaleInCassa = 0;
   }
-
   return cassa;
 }
 
-export default { recuperaCassa };
+export default { recuperaCassa, inserisciInCassa, eliminaVoceCassa };
