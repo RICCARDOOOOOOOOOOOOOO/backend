@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import Card from './components/card';
+import SectionTitle from './components/Titoli';
+import Modal from './components/Modal';
 
 const API_BASE = 'https://gestione.parrocchiacarpaneto.com/servizi/api/turni';
 
@@ -12,12 +15,35 @@ const extractArray = (data) => {
   return [];
 };
 
+/* Estrae l'anno da un turno (qualunque sia la proprietà) */
+const extractYear = (t) =>
+  t?.year ??
+  t?.anno ??
+  (t?.inizio ? new Date(t.inizio).getFullYear() : null);
+
+
 export default function App() {
-  const [years, setYears] = useState([2025, 2024]);
-  const [selectedYear, setSelectedYear] = useState(2025);
+  const currentYear = new Date().getFullYear();
+
+  /* Memo per non ricalcolare ad ogni render */
+  const allYears = useMemo(
+    () => Array.from({ length: 10 }, (_, i) => currentYear - i),
+    [],
+  );
+
+  const [years, setYears] = useState(allYears);
+  const [selectedYear, setSelectedYear] = useState(currentYear);
   const [turni, setTurni] = useState([]);
   const [selectedTurno, setSelectedTurno] = useState(null);
   const [partecipanti, setPartecipanti] = useState([]);
+  const [openModal, setOpenModal] = useState(false);
+  const [modalData, setModalData] = useState(null);
+
+  const handleClickPartecipante = (p) => {
+    setModalData(p);
+    setOpenModal(true);
+  };
+
 
   /* Token nella querystring → localStorage */
   useEffect(() => {
@@ -31,6 +57,9 @@ export default function App() {
     fetchTurni(selectedYear);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYear]);
+
+
+
 
   /* Header comune con JWT */
   const authHeader = () => ({
@@ -63,13 +92,14 @@ export default function App() {
       setSelectedTurno(null);
       setPartecipanti([]);
 
-      /* aggiorna dropdown anni */
-      const found = new Set([year]);
+      /* --------------- aggiorna dropdown anni --------------- */
+      const found = new Set([...allYears]);      // i 10 anni “fissi”
       turniArr.forEach((t) => {
-        const yr = t?.year ?? t?.anno ?? (t?.inizio ? new Date(t.inizio).getFullYear() : null);
+        const yr = extractYear(t);
         if (yr) found.add(Number(yr));
       });
-      setYears(Array.from(found).sort((a, b) => b - a));
+      setYears(Array.from(found).sort((a, b) => b - a));  // ordine decrescente
+
     } catch (err) {
       console.error('Errore fetchTurni:', err);
     }
@@ -108,63 +138,76 @@ export default function App() {
 
   /* -------------------- RENDER -------------------- */
   return (
-    <div className="min-h-screen flex flex-col items-center p-8 font-sans">
-      <button
-        onClick={aggiorna}
-        className="self-end mb-4 px-4 py-1 rounded-lg shadow text-sm hover:bg-gray-100"
-      >
-        Reset
-      </button>
+    <>
+    <div className="min-h-screen w-full bg-muted/40 flex flex-col items-center py-12 px-6 gap-8">
+      {/* ---------- CARD CASSA ---------- */}
+      <Card className="w-full sm:max-w-2xl lg:max-w-5xl space-y-6">
+        <SectionTitle>Cassa</SectionTitle>
 
-      <h1 className="text-4xl font-bold mb-6">Cassa</h1>
-      <div className="mt-8 text-4xl font-bold text-fuchsia-600">Tailwind è attivo 🎉</div>
+        {/* --- Select anni --- */}
+        <select
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(Number(e.target.value))}
+          className="block mx-auto w-40 rounded-xl border border-zinc-300 bg-white py-2 pl-3 pr-8 text-center text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary dark:bg-zinc-800 dark:border-zinc-700"
+        >
+          {years.map((y) => (
+            <option key={y}>{y}</option>
+          ))}
+        </select>
 
+        {/* --- Bottoni turni (tanti quanti ne arrivano) --- */}
+        <div className="flex flex-wrap gap-4 justify-center">
+          {turni.map((t, i) => (
+            <button
+              key={t?.id ?? i}
+              onClick={() => handleTurnoClick(t)}
+              className={`rounded-xl py-2 px-4 text-sm font-medium transition
+                ${selectedTurno?.id === t?.id
+                  ? 'bg-primary/10 text-primary ring-1 ring-primary'
+                  : 'bg-muted hover:bg-muted/80'}`}
+            >
+              {t?.titolo ?? `Turno ${i}`}
+            </button>
+          ))}
+        </div>
 
-      <select
-        className="mb-8 p-2 rounded-xl shadow border focus:outline-none focus:ring"
-        value={selectedYear}
-        onChange={(e) => setSelectedYear(Number(e.target.value))}
-      >
-        {years.map((y) => (
-          <option key={y} value={y}>
-            {y}
-          </option>
-        ))}
-      </select>
+      </Card>
 
-      {/* --- Bottoni turni (max 4) --- */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {turni.slice(0, 4).map((t, idx) => (
-          <button
-            key={t?.id ?? idx}
-            disabled={!t}
-            className={`rounded-xl py-2 px-4 shadow focus:outline-none focus:ring transition ${
-              selectedTurno?.id === t?.id ? 'bg-gray-200' : 'bg-white'
-            } ${!t ? 'opacity-50 cursor-default' : 'hover:bg-gray-100'}`}
-            onClick={() => handleTurnoClick(t)}
-          >
-            {t?.titolo ?? '—'}
-          </button>
-        ))}
-      </div>
-
-      {/* --- Lista partecipanti --- */}
+      {/* ---------- CARD PARTECIPANTI ---------- */}
       {selectedTurno && (
-        <div className="mt-10 w-full max-w-xl">
-          <h2 className="text-2xl font-semibold mb-4">{selectedTurno.titolo}</h2>
+        <Card className="w-full sm:max-w-2xl lg:max-w-5xl">
+          <SectionTitle>{selectedTurno.titolo}</SectionTitle>
+
           {partecipanti.length === 0 ? (
-            <p>Caricamento partecipanti...</p>
+            <p className="text-center mt-6 text-sm text-zinc-500">Caricamento…</p>
           ) : (
-            <ul className="list-disc ml-6 space-y-1">
+            /* elenco con “pill” tailwind */
+            <ul className="flex flex-col gap-4 mt-6">
               {partecipanti.map((p, i) => (
-                <li key={p?.id ?? p?.ID ?? i}>
-                  {(p?.nome ?? p?.Nome ?? '') + ' ' + (p?.cognome ?? p?.Cognome ?? '')}
+                <li
+                  key={p?.id ?? i}
+                  onClick={() => handleClickPartecipante(p)}
+                  className="cursor-pointer rounded-xl bg-muted px-4 py-3 shadow-sm hover:ring-2 hover:ring-primary/40"
+                >
+                  {(p?.nome ?? p?.Nome) + ' ' + (p?.cognome ?? p?.Cognome)}
                 </li>
               ))}
             </ul>
           )}
-        </div>
+        </Card>
       )}
     </div>
+    {/* ------- MODAL FLOTTANTE ------- */}
+    <Modal open={openModal} onClose={() => setOpenModal(false)}>
+      <h3 className="text-lg font-semibold mb-4">Dettagli partecipante (WIP)</h3>
+      <pre className="whitespace-pre-wrap text-sm">
+        {JSON.stringify(modalData, null, 2)}
+      </pre>
+    </Modal>
+
+    </>
+
   );
 }
+
+
