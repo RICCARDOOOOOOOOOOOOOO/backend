@@ -1,7 +1,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import Card from './components/card';
 import SectionTitle from './components/Titoli';
-import Modal from './components/Modal';
+import Modal from './components/ModalTest';
+import CassaModal from './components/ModalCassa';
 
 const API_BASE = 'https://gestione.parrocchiacarpaneto.com/servizi/api/turni';
 
@@ -198,12 +199,12 @@ export default function App() {
       )}
     </div>
     {/* ------- MODAL FLOTTANTE ------- */}
-    <Modal open={openModal} onClose={() => setOpenModal(false)}>
-      <h3 className="text-lg font-semibold mb-4">Dettagli partecipante (WIP)</h3>
-      <pre className="whitespace-pre-wrap text-sm">
-        {JSON.stringify(modalData, null, 2)}
-      </pre>
-    </Modal>
+    <CassaModal
+      open={openModal}
+      onClose={() => setOpenModal(false)}
+      partecipante={modalData}     /* l’oggetto cliccato */
+      turno={selectedTurno}        /* serve id_turno */
+    />
 
     </>
 
