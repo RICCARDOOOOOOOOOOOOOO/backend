@@ -1,15 +1,23 @@
-/* src/services/cassa.js -------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+/*  SERVIZI “CASSA” – tutte le chiamate PHP                                   */
+/* -------------------------------------------------------------------------- */
+
 const API_BASE =
   'https://gestione.parrocchiacarpaneto.com/servizi/api/turni';
 
+/* intestazione con JWT salvato in localStorage ---------------------------- */
 const authHeader = () => ({
   'Content-Type': 'application/json',
   Customauthorization: 'Bearer ' + localStorage.getItem('token'),
 });
 
-/* — helper fetch POST (ritorna già il payload “vero”) — */
-async function post(endpoint, payload) {
-  const res = await fetch(`${API_BASE}${endpoint}`, {
+/* helper POST (gestisce “/” facoltativo, salva eventuale nuovo token) ------ */
+async function post(endpoint, payload = {}) {
+  const url = endpoint.startsWith('/')
+    ? `${API_BASE}${endpoint}`
+    : `${API_BASE}/${endpoint}`;
+
+  const res = await fetch(url, {
     method: 'POST',
     headers: authHeader(),
     body: JSON.stringify(payload),
@@ -19,20 +27,22 @@ async function post(endpoint, payload) {
 
   const data = await res.json();
   if (data.token) localStorage.setItem('token', data.token);
+
+  /* molti script PHP rispondono con { returnObject: [...] } */
   return data.returnObject ?? data;
 }
 
-/* — builder: array grezzo → oggetto Cassa “pronto” — */
-function buildCassa(list, id_anag) {
-  if (!Array.isArray(list)) list = [];        // ← evita crash se il php torna {}
+/* builder: array grezzo → oggetto Cassa “pronto” -------------------------- */
+function buildCassa(list = []) {
+  if (!Array.isArray(list)) list = []; // forma di sicurezza
 
   const cassa = {
-    nome: null,
-    cognome: null,
-    inserimenti: [],
-    totaleVersato: 0,
-    totaleSpesa: 0,
-    totaleInCassa: 0,
+    nome:            '',
+    cognome:         '',
+    inserimenti:     [],
+    totaleVersato:   0,
+    totaleSpesa:     0,
+    totaleInCassa:   0,
   };
 
   list.forEach((e) => {
@@ -58,37 +68,36 @@ function buildCassa(list, id_anag) {
   return cassa;
 }
 
-
-/* — API public ----------------------------------------------------------- */
+/* API PUBBLICHE ----------------------------------------------------------- */
 export async function recuperaCassa(id_anag, id_turno) {
-  const raw = await post('/recuperaCassa.php', { id_anag, id_turno });
-  return buildCassa(raw, id_anag);
+  const raw = await post('recuperaCassa.php', { id_anag, id_turno });
+  return buildCassa(raw);
 }
 
 export async function inserisciInCassa(id_anag, id_turno, value, type) {
-  const raw = await post('/inserisciInCassa.php', {
+  const raw = await post('inserisciInCassa.php', {
     id_anag,
     id_turno,
     value,
     type,
   });
-  return buildCassa(raw, id_anag);
+  return buildCassa(raw);
 }
 
 export async function eliminaVoceCassa(id, id_anag, id_turno) {
-  const raw = await post('/eliminaVoceCassa.php', { id, id_anag, id_turno });
-  return buildCassa(raw, id_anag);
+  const raw = await post('eliminaVoceCassa.php', { id, id_anag, id_turno });
+  return buildCassa(raw);
 }
 
-/* — facoltative: le altre funzioni che ti servivano — */
+/* facoltative ------------------------------------------------------------- */
 export const recuperaRiepilogoCassa = (id_turno) =>
-  post('/recuperaRiepilogoCassa.php', { id_turno });
+  post('recuperaRiepilogoCassa.php', { id_turno });
 
 export const recuperaTotaliCassa = (id_turno) =>
-  post('/recuperaTotaliCassa.php', { id_turno });
+  post('recuperaTotaliCassa.php', { id_turno });
 
 export const creaPdfCassa = (id_turno, id_anag) =>
-  post('/creaPdfCassa.php', { id_turno, id_anag });
+  post('creaPdfCassa.php', { id_turno, id_anag });
 
 export const invioMailCassa = (id_turno, id_anag) =>
-  post('/invioMailCassa.php', [{ id_turno, id_anag }]);
+  post('invioMailCassa.php', [{ id_turno, id_anag }]);
