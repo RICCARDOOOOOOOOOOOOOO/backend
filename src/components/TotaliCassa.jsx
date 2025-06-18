@@ -1,106 +1,95 @@
 import { useEffect, useState } from 'react';
-import { recuperaTotaliCassa } from '../services/cassa';
+import { recuperaRiepilogoCassa, recuperaTotaliCassa } from '../services/cassa';
 import Card from './card';
 import SectionTitle from './Titoli';
 
-export default function TotaliCassa({ turnoId }) {
-  const [items, setItems]   = useState([]);
-  const [busy,  setBusy]    = useState(false);
+/**
+ * Mostra:
+ * • Entrate Totali   (somma di “totale_versato” di tutti i ragazzi)
+ * • Uscite  Totali   (somma di “totale_spesa”   di tutti i ragazzi)
+ * • Elenco etichette con valore (da /recuperaTotaliCassa.php)
+ */
+export default function TotaliCassa({ turnoId, refreshKey }) {
+  const [loading, setLoading] = useState(true);
+  const [entrate, setEntrate] = useState(0);
+  const [uscite, setUscite] = useState(0);
+  const [labels, setLabels] = useState([]);        // [{ type, value }]
 
-  /* scarica totali al cambio turno */
+  /* carica dati ogni volta che cambia il turno */
   useEffect(() => {
     if (!turnoId) return;
+
     (async () => {
-      setBusy(true);
       try {
-        const data = await recuperaTotaliCassa(turnoId); // [{type, value}]
-        setItems(data);
+        setLoading(true);
+
+        /* ---------------- riepilogo per partecipante ---------------- */
+        const riepilogo = await recuperaRiepilogoCassa(turnoId);
+        const totVersato = riepilogo.reduce(
+          (s, r) => s + Number(r.totale_versato ?? r.totaleVersato ?? 0),
+          0,
+        );
+        const totSpesa = riepilogo.reduce(
+          (s, r) => s + Number(r.totale_spesa   ?? r.totaleSpesa   ?? 0),
+          0,
+        );
+        setEntrate(totVersato);
+        setUscite(totSpesa);
+
+        /* ----------------  etichette complessive ------------------- */
+        const etichette = await recuperaTotaliCassa(turnoId);   // [{type,value}]
+        setLabels(Array.isArray(etichette) ? etichette : []);
+      } catch (e) {
+        console.error('Errore TotaliCassa:', e);
       } finally {
-        setBusy(false);
+        setLoading(false);
       }
     })();
-  }, [turnoId]);
+  }, [turnoId, refreshKey]);
 
-  /* calcola aggregati */
-  const entrate = items
-    .filter((i) => i.value > 0)
-    .reduce((acc, i) => acc + i.value, 0);
+  if (loading) return null;               // niente spazio vuoto mentre attende
 
-  const uscite = items
-    .filter((i) => i.value < 0)
-    .reduce((acc, i) => acc + Math.abs(i.value), 0);
-
-  const saldo = entrate - uscite;
-
-  /* — UI — */
   return (
-    <Card className="w-full sm:max-w-2xl lg:max-w-5xl space-y-8">
+    <Card className="w-full sm:max-w-2xl lg:max-w-5xl space-y-6">
       <SectionTitle>Riepilogo Finanziario</SectionTitle>
 
-      {/* blocchi entrate / uscite */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        <Box color="emerald" label="Entrate Totali" value={busy ? '…' : entrate} />
-        <Box color="rose"    label="Uscite Totali"  value={busy ? '…' : uscite} />
+      {/* BOX – Entrate / Uscite ------------------------------------------------ */}
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div className="rounded-xl bg-emerald-50 py-6 text-center">
+          <p className="text-sm font-medium text-emerald-700">Entrate Totali</p>
+          <p className="mt-1 text-2xl font-bold text-emerald-600">
+            € {entrate.toFixed(2)}
+          </p>
+        </div>
+
+        <div className="rounded-xl bg-rose-50 py-6 text-center">
+          <p className="text-sm font-medium text-rose-700">Uscite Totali</p>
+          <p className="mt-1 text-2xl font-bold text-rose-600">
+            € {uscite.toFixed(2)}
+          </p>
+        </div>
       </div>
 
-      {/* saldo finale */}
-      <div className="text-center">
-        <h3 className="text-lg font-medium mb-1">Saldo Finale</h3>
-        <p
-          className={`text-3xl font-bold ${
-            saldo >= 0 ? 'text-emerald-600' : 'text-rose-600'
-          }`}
-        >
-          {busy ? '…' : saldo.toFixed(2) + ' €'}
-        </p>
-      </div>
+      {/* LISTA etichette ------------------------------------------------------- */}
+      {labels.length > 0 && (
+        <>
+          <h4 className="text-center font-medium mt-2">Etichette</h4>
 
-      {/* breakdown per tipo */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="text-left">
-              <th className="py-2 px-4">Etichetta</th>
-              <th className="py-2 px-4">Valore</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.length === 0 && !busy && (
-              <tr>
-                <td colSpan="2" className="py-4 text-center text-zinc-500">
-                  Nessun dato
-                </td>
-              </tr>
-            )}
-            {items.map((el) => (
-              <tr key={el.type} className="border-t">
-                <td className="py-2 px-4">{el.type}</td>
-                <td
-                  className={`py-2 px-4 ${
-                    el.value >= 0 ? 'text-emerald-600' : 'text-rose-600'
-                  }`}
-                >
-                  {el.value.toFixed(2)} €
-                </td>
-              </tr>
+          <ul className="flex flex-col gap-1 text-sm">
+            {labels.map((l) => (
+              <li
+                key={l.type}
+                className="flex justify-between border-b last:border-b-0 px-4 py-1"
+              >
+                <span>{l.type || '-'}</span>
+                <span className="font-medium">
+                  € {Number(l.value).toFixed(2)}
+                </span>
+              </li>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </ul>
+        </>
+      )}
     </Card>
-  );
-}
-
-/* — piccolo box colorato — */
-function Box({ color, label, value }) {
-  return (
-    <div
-      className={`rounded-xl p-6 text-center border bg-${color}-50 border-${color}-200`}
-    >
-      <p className="uppercase text-xs tracking-wide text-zinc-500">{label}</p>
-      <p className={`mt-2 text-2xl font-semibold text-${color}-600`}>
-        {typeof value === 'number' ? value.toFixed(2) + ' €' : value}
-      </p>
-    </div>
   );
 }

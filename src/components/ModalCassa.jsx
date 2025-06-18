@@ -17,7 +17,7 @@ const CATEGORIE = ['', 'BAR', 'GITA', 'STRUDEL', 'SPECK'];
 const getIdAnag = (p) =>
   p?.id_anag ?? p?.idanag ?? p?.id ?? p?.idAnag ?? null;
 
-export default function CassaModal({ open, onClose, partecipante, turno }) {
+export default function CassaModal({ open, onClose, partecipante, turno, onChanged }) {
   const [cassa, setCassa] = useState(null);
   const [busy,  setBusy]  = useState(false);
 
@@ -60,6 +60,7 @@ export default function CassaModal({ open, onClose, partecipante, turno }) {
 
     const data = await inserisciInCassa(id_anag, turno.id, signed, categoria);
     setCassa(data);
+    onChanged?.();
 
     /* reset campi */
     setValue('');
@@ -71,6 +72,7 @@ export default function CassaModal({ open, onClose, partecipante, turno }) {
     const id_anag = getIdAnag(partecipante);
     const data = await eliminaVoceCassa(voce.id, id_anag, turno.id);
     setCassa(data);
+    onChanged?.();
   };
 
   /* se il modal non è aperto non renderizziamo nulla --------------------- */

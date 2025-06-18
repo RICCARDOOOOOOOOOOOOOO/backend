@@ -40,6 +40,10 @@ export default function App() {
   const [openModal, setOpenModal] = useState(false);
   const [modalData, setModalData] = useState(null);
 
+  /* versione totali → costringe TotaliCassa a ricaricare */
+  const [totVersion, setTotVersion] = useState(0);
+  const bumpTotali  = () => setTotVersion((v) => v + 1);
+
   const handleClickPartecipante = (p) => {
     setModalData(p);
     setOpenModal(true);
@@ -176,7 +180,7 @@ export default function App() {
       
               {/* ---------- RIEPILOGO FINANZIARIO (nuovo) ---------- */}
         {selectedTurno && (
-          <TotaliCassa turnoId={selectedTurno.id} />
+          <TotaliCassa turnoId={selectedTurno.id} refreshKey={totVersion}/>
         )}
 
       {/* ---------- CARD PARTECIPANTI ---------- */}
@@ -209,6 +213,7 @@ export default function App() {
       onClose={() => setOpenModal(false)}
       partecipante={modalData}     /* l’oggetto cliccato */
       turno={selectedTurno}        /* serve id_turno */
+      onChanged={bumpTotali}
     />
 
     </>
