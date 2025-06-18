@@ -93,8 +93,16 @@ export async function eliminaVoceCassa(id, id_anag, id_turno) {
 export const recuperaRiepilogoCassa = (id_turno) =>
   post('recuperaRiepilogoCassa.php', { id_turno });
 
+/* — totali per turno (array di { type, value }) — */
 export const recuperaTotaliCassa = (id_turno) =>
-  post('recuperaTotaliCassa.php', { id_turno });
+  post('/recuperaTotaliCassa.php', { id_turno }).then((arr = []) =>
+    arr.map((r) => ({
+      ...r,
+      value: Number(r.value ?? r.Value ?? 0),
+      type:  r.type  ?? r.Type  ?? '',
+    })),
+  );
+
 
 export const creaPdfCassa = (id_turno, id_anag) =>
   post('creaPdfCassa.php', { id_turno, id_anag });

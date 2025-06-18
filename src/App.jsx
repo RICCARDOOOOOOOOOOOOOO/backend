@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import Card from './components/card';
 import SectionTitle from './components/Titoli';
 import CassaModal from './components/ModalCassa';
+import TotaliCassa from './components/TotaliCassa';   // ← nuovo import
 
 const API_BASE = 'https://gestione.parrocchiacarpaneto.com/servizi/api/turni';
 
@@ -172,6 +173,11 @@ export default function App() {
         </div>
 
       </Card>
+      
+              {/* ---------- RIEPILOGO FINANZIARIO (nuovo) ---------- */}
+        {selectedTurno && (
+          <TotaliCassa turnoId={selectedTurno.id} />
+        )}
 
       {/* ---------- CARD PARTECIPANTI ---------- */}
       {selectedTurno && (
