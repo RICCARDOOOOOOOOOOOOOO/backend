@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import Card from './components/card';
 import SectionTitle from './components/Titoli';
-import Modal from './components/ModalTest';
 import CassaModal from './components/ModalCassa';
 
 const API_BASE = 'https://gestione.parrocchiacarpaneto.com/servizi/api/turni';

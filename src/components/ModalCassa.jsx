@@ -1,4 +1,4 @@
-/* src/components/CassaModal.jsx ------------------------------------------- */
+/* src/components/ModalCassa.jsx ------------------------------------------- */
 import { useEffect, useState } from 'react';
 import {
   recuperaCassa,
@@ -28,13 +28,25 @@ export default function CassaModal({ open, onClose, partecipante, turno }) {
   }, [open, partecipante, turno]);
 
   /* — helper — */
-  const addVoce = async (tipo /* 'in' | 'out' */) => {
-    if (!value) return;
-    const signed = tipo === 'in' ? +value : -value;
-    const data   = await inserisciInCassa(partecipante.id, turno.id, signed, tipo);
-    setCassa(data);
-    setValue('');
-  };
+const addVoce = async (modo /* 'in' | 'out' */) => {
+  if (!value) return;
+  const num = parseFloat(String(value).replace(',', '.'));
+  if (Number.isNaN(num) || num === 0) return;
+  const signed = modo === 'in' ? Math.abs(num) : -Math.abs(num);
+
+  /* ← il backend vuole *comunque* un “type” (categoria).  
+       Finché non scegli un select dedicato, ne mandiamo uno generico. */
+  const data = await inserisciInCassa(
+    partecipante.id,
+    turno.id,
+    signed,
+    'GEN'          // categoria placeholder
+  );
+
+  setCassa(data);
+  setValue('');
+};
+
 
   const delVoce = async (voce) => {
     const data = await eliminaVoceCassa(voce.id, partecipante.id, turno.id);
@@ -73,7 +85,7 @@ export default function CassaModal({ open, onClose, partecipante, turno }) {
             cassa?.totaleInCassa >= 0 ? 'text-emerald-600' : 'text-rose-600'
           }`}
         >
-          {busy ? '…' : `${cassa?.totaleInCassa?.toFixed(2)} €`}
+          {busy || !cassa ? '…' : cassa.totaleInCassa.toFixed(2) + ' €'}
         </div>
 
         {/* — VERSATO / SPESO — */}
@@ -117,7 +129,7 @@ export default function CassaModal({ open, onClose, partecipante, turno }) {
                       v.value >= 0 ? 'text-emerald-600' : 'text-rose-600'
                     }`}
                   >
-                    {v.value.toFixed(2)} €
+                    {v.value.toFixed(2).replace('.', ',')} €
                   </td>
                   <td className="py-2 px-4 text-right">
                     <button
