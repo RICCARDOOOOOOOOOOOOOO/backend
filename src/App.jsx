@@ -7,6 +7,9 @@ import SectionTitle from './components/Titoli';
 import CassaModal   from './components/ModalCassa';
 import TotaliCassa  from './components/TotaliCassa';
 import NavBar       from './components/NavBar';
+import {
+  recuperaRiepilogoCassa,   // ← già esiste nei services
+} from './services/cassa';
 
 const API_BASE =
   'https://gestione.parrocchiacarpaneto.com/servizi/api/turni';
@@ -22,12 +25,16 @@ const extractArray = (d) =>
 const extractYear = (t) =>
   t?.year ?? t?.anno ?? (t?.inizio ? new Date(t.inizio).getFullYear() : null);
 
+/* id helper (partec. può arrivare con nomi diversi) ------------------ */
+const getIdAnag = (p) =>
+  p?.id_anag ?? p?.idanag ?? p?.id ?? p?.idAnag ?? null;
+
 /* ------------------------------------------------------------------- */
 export default function App() {
   /* ---------- costanti iniziali ----------------------------------- */
   const currentYear = new Date().getFullYear();
   const storedYear  = Number(localStorage.getItem('selectedYear'));
-  const initialYear = storedYear || currentYear;          // ← qui l’anno giusto!
+  const initialYear = storedYear || currentYear;
 
   const allYears = useMemo(
     () => Array.from({ length: 10 }, (_, i) => currentYear - i),
@@ -36,13 +43,17 @@ export default function App() {
 
   /* ---------- state ------------------------------------------------ */
   const [years,         setYears]         = useState(allYears);
-  const [selectedYear,  setSelectedYear]  = useState(initialYear);  // ← usa subito quello salvato
+  const [selectedYear,  setSelectedYear]  = useState(initialYear);
   const [turni,         setTurni]         = useState([]);
   const [selectedTurno, setSelectedTurno] = useState(null);
   const [partecipanti,  setPartecipanti]  = useState([]);
+  const [saldoMap,      setSaldoMap]      = useState({});   // id_anag → saldo €
 
   const [openModal,     setOpenModal]     = useState(false);
   const [modalData,     setModalData]     = useState(null);
+
+  /* ricerca live ----------------------------------------------------- */
+  const [query, setQuery] = useState('');
 
   /* riepilogo on/off (persistente) ---------------------------------- */
   const [showSummary, setShowSummary] = useState(() => {
@@ -56,7 +67,7 @@ export default function App() {
       return next;
     });
 
-  /* se ho anno+turno salvati nascondo i selettori all’avvio ---------- */
+  /* se ho anno+turno salvati nascondo i selettori -------------------- */
   const [showSelectors, setShowSelectors] = useState(() => {
     return !(localStorage.getItem('selectedYear') &&
              localStorage.getItem('selectedTurnoId'));
@@ -69,25 +80,24 @@ export default function App() {
   /* ------------------------------------------------------------------ */
   /*  TOKEN da querystring                                              */
   useEffect(() => {
-    const qs = new URLSearchParams(window.location.search);
-    const tk = qs.get('token');
+    const tk = new URLSearchParams(window.location.search).get('token');
     if (tk) localStorage.setItem('token', tk);
   }, []);
 
-  /* --------------- carica i turni dell’anno scelto ----------------- */
+  /* carica turni dell’anno scelto ----------------------------------- */
   useEffect(() => {
     if (!selectedYear) return;
     fetchTurni(selectedYear);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYear]);
 
-  /* header jwt ------------------------------------------------------- */
+  /* ------------------------------------------------------------------ */
+  /*  API helpers                                                       */
   const authHeader = () => ({
     'Content-Type': 'application/json',
     Customauthorization: 'Bearer ' + localStorage.getItem('token'),
   });
 
-  /* ---------------- API calls -------------------------------------- */
   const fetchTurni = async (year) => {
     const res  = await fetch(`${API_BASE}/recuperaTurni.php?year=${year}`, {
       headers: authHeader(),
@@ -97,8 +107,9 @@ export default function App() {
 
     setTurni(arr);
     setPartecipanti([]);
+    setSaldoMap({});        // reset finché non ricarico riepilogo
 
-    /* aggiorna dropdown anni */
+    /* dropdown anni dinamico */
     const found = new Set([...allYears]);
     arr.forEach((t) => {
       const y = extractYear(t);
@@ -106,33 +117,46 @@ export default function App() {
     });
     setYears(Array.from(found).sort((a, b) => b - a));
 
-    /* se c’è un turno salvato per quell’anno, selezionalo e carica la lista */
+    /* ripristina eventuale turno salvato */
     const savedId = Number(localStorage.getItem('selectedTurnoId'));
     if (savedId) {
       const match = arr.find((t) => Number(t.id) === savedId);
       if (match) {
         setSelectedTurno(match);
         setShowSelectors(false);
-        fetchDettagli(match.id);
+        fetchDettagli(match.id);     // carica lista + saldo map
       }
     }
   };
 
   const fetchDettagli = async (idTurno) => {
-    const res  = await fetch(`${API_BASE}/recuperaDettagli.php`, {
+    /* lista partecipanti */
+    const resP  = await fetch(`${API_BASE}/recuperaDettagli.php`, {
       method: 'POST',
       headers: authHeader(),
       body: JSON.stringify({ idturno: idTurno }),
     });
-    const data = await res.json();
-    setPartecipanti(extractArray(data));
+    const datiP = await resP.json();
+    setPartecipanti(extractArray(datiP));
+
+    /* saldo per ogni partecipante (riepilogo) */
+    const riepilogo = await recuperaRiepilogoCassa(idTurno);
+    const map = {};
+    riepilogo.forEach((r) => {
+      const id = getIdAnag(r);
+      map[id]  = Number(
+        r.totale_in_cassa ?? r.totaleInCassa ?? r.totale_inCassa ?? 0,
+      );
+    });
+    setSaldoMap(map);
   };
 
-  /* ---------------- HANDLERS --------------------------------------- */
+  /* ------------------------------------------------------------------ */
+  /*  HANDLERS                                                          */
   const handleYear = (y) => {
     setSelectedYear(y);
     localStorage.setItem('selectedYear', y);
-    localStorage.removeItem('selectedTurnoId'); // azzera turno salvato
+    localStorage.removeItem('selectedTurnoId');
     setSelectedTurno(null);
     setShowSelectors(true);
   };
@@ -149,7 +173,18 @@ export default function App() {
     setOpenModal(true);
   };
 
-  /* ---------------- RENDER ----------------------------------------- */
+  /* filtro partecipanti --------------------------------------------- */
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? partecipanti.filter((p) => {
+        const nome = (p?.nome ?? p?.Nome ?? '').toLowerCase();
+        const cog  = (p?.cognome ?? p?.Cognome ?? '').toLowerCase();
+        return nome.includes(q) || cog.includes(q);
+      })
+    : partecipanti;
+
+  /* ------------------------------------------------------------------ */
+  /*  RENDER                                                            */
   return (
     <>
       <NavBar
@@ -201,33 +236,53 @@ export default function App() {
 
         {/* ---------- RIEPILOGO FINANZIARIO -------------------------- */}
         {selectedTurno && showSummary && (
-          <TotaliCassa
-            key={totVersion}       /* forza ricarico al bisogno */
-            turnoId={selectedTurno.id}
-          />
+          <TotaliCassa key={totVersion} turnoId={selectedTurno.id} />
         )}
 
         {/* ---------- LISTA PARTECIPANTI ----------------------------- */}
         {selectedTurno && (
-          <Card className="w-full sm:max-w-2xl lg:max-w-5xl">
+          <Card className="w-full sm:max-w-2xl lg:max-w-5xl space-y-6">
             <SectionTitle>{selectedTurno.titolo}</SectionTitle>
 
-            {partecipanti.length === 0 ? (
-              <p className="text-center mt-6 text-sm text-zinc-500">
-                Caricamento…
+            {/* input ricerca */}
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Cerca partecipante…"
+              className="mx-auto w-full rounded-xl border px-4 py-2 text-sm
+                         dark:bg-zinc-800 dark:border-zinc-700"
+            />
+
+            {/* elenco */}
+            {filtered.length === 0 ? (
+              <p className="text-center mt-4 text-sm text-zinc-500">
+                Nessun risultato
               </p>
             ) : (
-              <ul className="flex flex-col gap-4 mt-6">
-                {partecipanti.map((p, i) => (
-                  <li
-                    key={p?.id ?? i}
-                    onClick={() => handleClickPartecipante(p)}
-                    className="cursor-pointer rounded-xl bg-muted px-4 py-3 shadow-sm
-                               hover:ring-2 hover:ring-blue-600/60"
-                  >
-                    {(p?.nome ?? p?.Nome) + ' ' + (p?.cognome ?? p?.Cognome)}
-                  </li>
-                ))}
+              <ul className="flex flex-col gap-4">
+                {filtered.map((p, i) => {
+                  const id    = getIdAnag(p);
+                  const saldo = saldoMap[id] ?? 0;
+                  const color =
+                    saldo >= 0 ? 'text-emerald-600' : 'text-rose-600';
+                  return (
+                    <li
+                      key={p?.id ?? i}
+                      onClick={() => handleClickPartecipante(p)}
+                      className="flex justify-between items-center cursor-pointer
+                                 rounded-xl bg-muted px-4 py-3 shadow-sm
+                                 hover:ring-2 hover:ring-blue-600/60"
+                    >
+                      <span>
+                        {(p?.nome ?? p?.Nome) + ' ' + (p?.cognome ?? p?.Cognome)}
+                      </span>
+                      <span className={`ml-4 font-semibold ${color}`}>
+                        {saldo.toFixed(2)} €
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </Card>
