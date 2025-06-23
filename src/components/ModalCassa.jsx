@@ -178,43 +178,51 @@ export default function CassaModal({ open, onClose, partecipante, turno, onChang
             </tbody>
           </table>
         </div>
-        {/* — FORM RAPIDO: bottoni + importo (riga 1)  e  select categoria (riga 2) — */}
+       {/* — FORM RAPIDO --------------------------------------------------------- */}
         <div className="mt-6 space-y-4">
-          {/* riga 1 -------------------------------------------------------------- */}
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Versamento */}
+
+          {/* riga 1 – solo input (su mobile) / al centro (desktop) -------------- */}
+          <input
+            type="number"                   /* ok mantenerlo “number” */
+            inputMode="decimal"             /* 👈 tastierino numerico */
+            pattern="[0-9]*"                /* 👈 evita la tastiera alfanumerica su iOS */
+            step="0.01"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="0,00"
+            className="w-full sm:flex-1 rounded-lg border px-3 py-2 text-sm
+                      dark:bg-zinc-800 dark:border-zinc-700"
+          />
+
+          {/* riga 2 – bottoni affiancati (mobile) -- oppure stessa riga (sm+) ---- */}
+          <div className="flex gap-4 sm:flex-1">
+
             <button
               onClick={() => addVoce('in')}
-              className="flex-1 rounded-lg bg-emerald-500/80 hover:bg-emerald-500 py-2 text-white font-medium"
+              className="keep-tw-border flex-1 rounded-lg border border-emerald-500
+                        bg-emerald-300 hover:bg-emerald-500
+                        text-white font-semibold shadow-md py-2 transition-colors"
             >
               Versamento
             </button>
 
-            {/* importo */}
-            <input
-              type="number"
-              step="0.01"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder="0,00"
-              className="flex-1 rounded-lg border px-3 py-2 text-sm dark:bg-zinc-800 dark:border-zinc-700"
-            />
-
-            {/* Spesa */}
             <button
               onClick={() => addVoce('out')}
-              className="flex-1 rounded-lg bg-rose-500/80 hover:bg-rose-500 py-2 text-white font-medium"
+              className="keep-tw-border flex-1 rounded-lg border border-rose-500
+                        bg-rose-300 hover:bg-rose-500
+                        text-white font-semibold shadow-md py-2 transition-colors"
             >
               Spesa
             </button>
           </div>
 
-          {/* riga 2 : select categoria, centrata sotto l’importo ---------------- */}
+          {/* riga 3 – select etichetta, centrata ------------------------------- */}
           <div className="flex justify-center">
             <select
               value={tipo}
               onChange={(e) => setTipo(e.target.value)}
-              className="w-full sm:w-1/2 rounded-lg border px-3 py-2 text-sm dark:bg-zinc-800 dark:border-zinc-700"
+              className="w-full sm:w-1/2 rounded-lg border px-3 py-2 text-sm
+                        dark:bg-zinc-800 dark:border-zinc-700"
             >
               {CATEGORIE.map((c) => (
                 <option key={c} value={c}>
