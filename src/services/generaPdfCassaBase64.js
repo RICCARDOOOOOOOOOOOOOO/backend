@@ -116,7 +116,7 @@ export default async function generaPdfCassaBase64(anag, cassa, turno) {
 
 
 // you can generate in another format also  like blob
-     var out = doc.output('datauri');
+     var out = doc.output('blob');
     return out;
     
 }
