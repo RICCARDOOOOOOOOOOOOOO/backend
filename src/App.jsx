@@ -14,9 +14,11 @@ import NavBar       from './components/NavBar';
 import {
   recuperaRiepilogoCassa,
   recuperaCassa,
+  invioMailCassaConAllegato,
 } from './services/cassa';
 
 import generaPdfCassa from './services/generaPdfCassa';
+import generaPdfCassaBase64 from './services/generaPdfCassaBase64';
 
 /* utilità auth ------------------------------------------------------ */
 import {
@@ -214,6 +216,27 @@ export default function App() {
     }
   };
 
+  /* PDF + MAIL --------------------------------------------------------- */
+  const handlePdfWithMail = async (p) => {
+    try {
+      const cassa = await recuperaCassa(getIdAnag(p), selectedTurno.id);
+      const base64attachment = await generaPdfCassaBase64(
+        { nome: p.nome ?? p.Nome, cognome: p.cognome ?? p.Cognome },
+        cassa,
+        selectedTurno,
+      );
+
+      console.log("base64attachment data is ok");       
+      const sendMailReturn = await invioMailCassaConAllegato(selectedTurno.id, getIdAnag(p), base64attachment);
+      if (sendMailReturn?.success) {
+        alert('Email inviata con successo!');
+      }
+    } catch (e) {
+      console.error('Errore Invio PDF:', e);
+      alert('Impossibile generare il PDF');
+    }
+  };
+
   /* filtro ricerca -------------------------------------------------- */
   const q = query.trim().toLowerCase();
   const filtered = q
@@ -337,6 +360,19 @@ export default function App() {
                       >
                         🧾
                       </button>
+
+
+                      {/* MAIL */}
+                      <button
+                        onClick={() => handlePdfWithMail(p)}
+                        title="Invia PDF"
+                        className="ml-4 shrink-0 w-10 h-10 flex items-center justify-center
+                                   rounded-lg hover:bg-blue-200 text-blue-700 text-xl"
+                      >
+                        🧾xx
+                      </button>
+
+
                     </li>
                   );
                 })}

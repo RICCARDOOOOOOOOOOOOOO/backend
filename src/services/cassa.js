@@ -109,3 +109,6 @@ export const creaPdfCassa = (id_turno, id_anag) =>
 
 export const invioMailCassa = (id_turno, id_anag) =>
   post('invioMailCassa.php', [{ id_turno, id_anag }]);
+
+export const invioMailCassaConAllegato = (id_turno, id_anag, base64attachment) =>
+  post('invioMailCassaConAllegato.php', [{ id_turno, id_anag, base64attachment }]);
