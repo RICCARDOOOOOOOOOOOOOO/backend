@@ -13,18 +13,24 @@ import { Trash2 } from 'lucide-react';
 /* categorie disponibili (puoi aggiungerne) -------------------------------- */
 const CATEGORIE = ['', 'BAR', 'GITA', 'STRUDEL', 'SPECK'];
 
-/* utilità: ricava id_anag da qualunque forma arrivi ---------------------- */
+/* utilità: ricava id_anag da qualunque forma arrivi ----------------------- */
 const getIdAnag = (p) =>
   p?.id_anag ?? p?.idanag ?? p?.id ?? p?.idAnag ?? null;
 
-export default function CassaModal({ open, onClose, partecipante, turno, onChanged }) {
+export default function CassaModal({
+  open,
+  onClose,
+  partecipante,
+  turno,
+  onChanged,
+}) {
   const [cassa, setCassa] = useState(null);
-  const [busy,  setBusy]  = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const [value, setValue] = useState('');
-  const [tipo,  setTipo]  = useState('');
+  const [tipo, setTipo] = useState('');
 
-  /* carica la cassa quando il modal si apre ------------------------------ */
+  /* carica cassa quando il modal si apre ---------------------------------- */
   useEffect(() => {
     if (!open || !partecipante || !turno) return;
 
@@ -42,32 +48,29 @@ export default function CassaModal({ open, onClose, partecipante, turno, onChang
     })();
   }, [open, partecipante, turno]);
 
-  /* inserisci voce (Versamento / Spesa) ---------------------------------- */
-  const addVoce = async (modo /* 'in' | 'out' */) => {
+  /* inserisci voce -------------------------------------------------------- */
+  const addVoce = async (modo /* in | out */) => {
     const num = parseFloat(String(value).replace(',', '.'));
     if (!num || Number.isNaN(num)) return;
 
-    /* se è una spesa serve la categoria */
     if (modo === 'out' && !tipo) {
       alert('Seleziona un tipo per la spesa');
       return;
     }
 
     const id_anag = getIdAnag(partecipante);
-    const signed  = modo === 'in' ? Math.abs(num) : -Math.abs(num);
-
-    const categoria = modo === 'in' ? 'VERS' : tipo; // default “VERS” per versamenti
+    const signed = modo === 'in' ? Math.abs(num) : -Math.abs(num);
+    const categoria = modo === 'in' ? 'VERS' : tipo;
 
     const data = await inserisciInCassa(id_anag, turno.id, signed, categoria);
     setCassa(data);
     onChanged?.();
 
-    /* reset campi */
     setValue('');
     if (modo === 'out') setTipo('');
   };
 
-  /* elimina voce --------------------------------------------------------- */
+  /* elimina voce ---------------------------------------------------------- */
   const delVoce = async (voce) => {
     const id_anag = getIdAnag(partecipante);
     const data = await eliminaVoceCassa(voce.id, id_anag, turno.id);
@@ -75,10 +78,9 @@ export default function CassaModal({ open, onClose, partecipante, turno, onChang
     onChanged?.();
   };
 
-  /* se il modal non è aperto non renderizziamo nulla --------------------- */
   if (!open) return null;
 
-  /* layout ---------------------------------------------------------------- */
+  /* ---------------------------------------------------------------------- */
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
@@ -86,9 +88,9 @@ export default function CassaModal({ open, onClose, partecipante, turno, onChang
     >
       <div
         className="relative w-full max-w-xl bg-white dark:bg-zinc-900 rounded-3xl p-8 shadow-lg"
-        onClick={(e) => e.stopPropagation()} /* blocca chiusura interna */
+        onClick={(e) => e.stopPropagation()}       /* blocca chiusura interna */
       >
-        {/* bottone × chiusura */}
+        {/* × chiusura */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-2xl leading-none hover:scale-110 transition"
@@ -96,13 +98,13 @@ export default function CassaModal({ open, onClose, partecipante, turno, onChang
           &times;
         </button>
 
-        {/* nome ragazzo */}
+        {/* NOME */}
         <h2 className="text-center text-2xl font-semibold tracking-wide mb-6">
           {partecipante?.nome || partecipante?.Nome}{' '}
           {partecipante?.cognome || partecipante?.Cognome}
         </h2>
 
-        {/* saldo */}
+        {/* SALDO */}
         <div
           className={`text-3xl font-bold text-center mb-4 ${
             (cassa?.totaleInCassa ?? 0) >= 0
@@ -113,7 +115,7 @@ export default function CassaModal({ open, onClose, partecipante, turno, onChang
           {busy || !cassa ? '…' : cassa.totaleInCassa.toFixed(2) + ' €'}
         </div>
 
-        {/* totali */}
+        {/* STATISTICHE */}
         <div className="grid grid-cols-2 gap-4 mb-8 text-sm">
           <Stat
             label="Totale versato"
@@ -128,17 +130,25 @@ export default function CassaModal({ open, onClose, partecipante, turno, onChang
           />
         </div>
 
-        {/* elenco voci */}
+        {/* LISTA VOCI ------------------------------------------------------- */}
         <div className="max-h-60 overflow-y-auto border rounded-xl">
-          <table className="min-w-full text-sm">
+          <table className="min-w-full table-fixed text-xs sm:text-sm">
+            {/* larghezze fisse */}
+            <colgroup>
+              <col className="w-24" />  {/* Data   */}
+              <col className="w-20" />  {/* Valore */}
+              <col />                   {/* Tipo   */}
+            </colgroup>
+
             <thead className="sticky top-0 bg-muted/50 backdrop-blur">
               <tr className="text-left">
-                <th className="py-2 px-4 w-36">Data</th>
+                <th className="py-2 px-4">Data</th>
                 <th className="py-2">Valore</th>
                 <th className="py-2">Tipo</th>
-                <th className="py-2 px-4 w-20 text-right" />
+                <th className="py-2 px-4 w-10" />
               </tr>
             </thead>
+
             <tbody>
               {!busy && cassa?.inserimenti?.length === 0 && (
                 <tr>
@@ -153,17 +163,20 @@ export default function CassaModal({ open, onClose, partecipante, turno, onChang
 
               {cassa?.inserimenti?.map((v) => (
                 <tr key={v.id} className="border-t last:border-b-0">
-                  <td className="py-2 px-4">
+                  <td className="py-2 px-4 whitespace-nowrap">
                     {new Date(v.insert_date).toLocaleDateString()}
                   </td>
+
                   <td
-                    className={`py-2 ${
+                    className={`py-2 whitespace-nowrap ${
                       v.value >= 0 ? 'text-emerald-600' : 'text-rose-600'
                     }`}
                   >
                     {v.value.toFixed(2).replace('.', ',')} €
                   </td>
-                  <td className="py-2">{v.type}</td>
+
+                  <td className="py-2 truncate">{v.type}</td>
+
                   <td className="py-2 px-4 text-right">
                     <button
                       onClick={() => delVoce(v)}
@@ -178,30 +191,29 @@ export default function CassaModal({ open, onClose, partecipante, turno, onChang
             </tbody>
           </table>
         </div>
-       {/* — FORM RAPIDO --------------------------------------------------------- */}
-        <div className="mt-6 space-y-4">
 
-          {/* riga 1 – solo input (su mobile) / al centro (desktop) -------------- */}
+        {/* FORM RAPIDO ------------------------------------------------------ */}
+        <div className="mt-6 space-y-4">
+          {/* input importo */}
           <input
-            type="number"                   /* ok mantenerlo “number” */
-            inputMode="decimal"             /* 👈 tastierino numerico */
-            pattern="[0-9]*"                /* 👈 evita la tastiera alfanumerica su iOS */
+            type="number"
+            inputMode="decimal"
+            pattern="[0-9]*"
             step="0.01"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="0,00"
             className="w-full sm:flex-1 rounded-lg border px-3 py-2 text-sm
-                      dark:bg-zinc-800 dark:border-zinc-700"
+                       dark:bg-zinc-800 dark:border-zinc-700"
           />
 
-          {/* riga 2 – bottoni affiancati (mobile) -- oppure stessa riga (sm+) ---- */}
+          {/* bottoni salvati */}
           <div className="flex gap-4 sm:flex-1">
-
             <button
               onClick={() => addVoce('in')}
               className="keep-tw-border flex-1 rounded-lg border border-emerald-500
-                        bg-emerald-300 hover:bg-emerald-500
-                        text-white font-semibold shadow-md py-2 transition-colors"
+                         bg-emerald-300 hover:bg-emerald-500
+                         text-white font-semibold shadow-md py-2 transition-colors"
             >
               Versamento
             </button>
@@ -209,20 +221,20 @@ export default function CassaModal({ open, onClose, partecipante, turno, onChang
             <button
               onClick={() => addVoce('out')}
               className="keep-tw-border flex-1 rounded-lg border border-rose-500
-                        bg-rose-300 hover:bg-rose-500
-                        text-white font-semibold shadow-md py-2 transition-colors"
+                         bg-rose-300 hover:bg-rose-500
+                         text-white font-semibold shadow-md py-2 transition-colors"
             >
               Spesa
             </button>
           </div>
 
-          {/* riga 3 – select etichetta, centrata ------------------------------- */}
+          {/* select tipo */}
           <div className="flex justify-center">
             <select
               value={tipo}
               onChange={(e) => setTipo(e.target.value)}
               className="w-full sm:w-1/2 rounded-lg border px-3 py-2 text-sm
-                        dark:bg-zinc-800 dark:border-zinc-700"
+                         dark:bg-zinc-800 dark:border-zinc-700"
             >
               {CATEGORIE.map((c) => (
                 <option key={c} value={c}>
@@ -232,13 +244,14 @@ export default function CassaModal({ open, onClose, partecipante, turno, onChang
             </select>
           </div>
         </div>
-
       </div>
     </div>
   );
 }
 
-/* componente “stat” piccolino ------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+/*  Stat – piccola card                                                       */
+/* -------------------------------------------------------------------------- */
 function Stat({ label, value, positive = false }) {
   return (
     <div

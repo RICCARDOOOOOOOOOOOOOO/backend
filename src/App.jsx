@@ -214,7 +214,7 @@ export default function App() {
 
       <div className="pt-20" />
 
-      <div className="min-h-screen w-full bg-muted/40 flex flex-col items-center py-12 px-6 gap-8">
+      <div className="min-h-screen w-full bg-muted/40 flex flex-col items-center sm:py-12 px-3 sm:px-6 gap-8" >
 
         {/* ---------- selettori anno / turno ------------------------ */}
         {showSelectors && (
@@ -291,13 +291,15 @@ export default function App() {
                       {/* nome (click → modal) */}
                       <button
                         onClick={() => handleClickPartecipante(p)}
-                        className="flex-1 text-left truncate focus:outline-none"
+                        className="flex-1 text-left focus:outline-none"
                       >
                         {(p?.nome ?? p?.Nome) + ' ' + (p?.cognome ?? p?.Cognome)}
                       </button>
 
                       {/* saldo */}
-                      <span className={`w-24 text-right font-semibold ${color}`}>
+                      <span 
+                        onClick={() => handleClickPartecipante(p)}
+                        className={`w-24 text-right font-semibold ${color}`}>
                         {saldo.toFixed(2)} €
                       </span>
 
