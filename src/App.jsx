@@ -34,7 +34,8 @@ const API_BASE =
 
 const LOGIN_URL =
   'https://gestione.parrocchiacarpaneto.com/login/#/?returnUrl=' +
-  encodeURIComponent('https://gestione.parrocchiacarpaneto.com/cassa_r');
+  ( location.protocol === 'https:' ? encodeURIComponent('https://gestione.parrocchiacarpaneto.com/cassa_r')
+          : encodeURIComponent('http://localhost:5173'));
 
 const extractArray = (d) =>
   Array.isArray(d)                 ? d

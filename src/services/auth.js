@@ -2,7 +2,7 @@
 /*  services/auth.js – piccola utilità per il token                    */
 /* ------------------------------------------------------------------ */
 const API_BASE =
-  'https://gestione.parrocchiacarpaneto.com/servizi/api/auth';   // ⬅ endpoint protetto
+  'https://gestione.parrocchiacarpaneto.com/servizi/api/login';   // ⬅ endpoint protetto
 
 /* legge / scrive token in localStorage ----------------------------- */
 export const getToken    = () => localStorage.getItem('token') || null;
@@ -21,7 +21,7 @@ export async function isTokenValid() {
   if (!tk) return false;
 
   try {
-    const res = await fetch(`${API_BASE}/ping.php`, { headers: authHeader() });
+    const res = await fetch(`${API_BASE}/checkSession.php`, { headers: authHeader() });
     return res.ok;                     // 200 ⇒ valido, 401/403 ⇒ non valido
   } catch {
     return false;
