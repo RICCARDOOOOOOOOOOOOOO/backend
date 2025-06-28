@@ -1,7 +1,5 @@
 /* ------------------------------------------------------------------- */
-/*  App.jsx                                                            */
-/*  – check token + redirect login                                     */
-/*  – toggle riepilogo & toggle PDF/Saldo                              */
+/*  App.jsx – PDF + Mail toggle con stato salvato                      */
 /* ------------------------------------------------------------------- */
 import React, { useMemo, useState, useEffect } from 'react';
 import Card         from './components/card';
@@ -10,15 +8,14 @@ import CassaModal   from './components/ModalCassa';
 import TotaliCassa  from './components/TotaliCassa';
 import NavBar       from './components/NavBar';
 
-import { recuperaRiepilogoCassa, recuperaCassa } from './services/cassa';
-import generaPdfCassa from './services/generaPdfCassa';
-
 import {
-  isTokenValid,
-  setToken,
-  clearToken,
-  authHeader,
-} from './services/auth';
+  recuperaRiepilogoCassa,
+  recuperaCassa,
+  invioMailCassaConAllegato,          /* ★ NEW */
+} from './services/cassa';
+import generaPdfCassa                  from './services/generaPdfCassa';
+
+import { isTokenValid, setToken, clearToken, authHeader } from './services/auth';
 
 /* ------------------------------------------------------------------ */
 /* helper                                                             */
@@ -35,15 +32,11 @@ const LOGIN_URL =
   );
 
 const extractArray = (d) =>
-  Array.isArray(d)
-    ? d
-    : Array.isArray(d?.returnObject)
-    ? d.returnObject
-    : Array.isArray(d?.turni)
-    ? d.turni
-    : Array.isArray(d?.partecipanti)
-    ? d.partecipanti
-    : [];
+  Array.isArray(d)                 ? d
+  : Array.isArray(d?.returnObject) ? d.returnObject
+  : Array.isArray(d?.turni)        ? d.turni
+  : Array.isArray(d?.partecipanti) ? d.partecipanti
+  : [];
 
 const extractYear = (t) =>
   t?.year ?? t?.anno ?? (t?.inizio ? new Date(t.inizio).getFullYear() : null);
@@ -53,69 +46,74 @@ const getIdAnag = (p) =>
 
 /* ------------------------------------------------------------------- */
 export default function App() {
-  /* ───────────────── auth all’avvio ────────────────────────────── */
+  /* ───────── auth check all’avvio ───────── */
   useEffect(() => {
     (async () => {
-      const p = new URLSearchParams(window.location.search);
-      const tk = p.get('token');
+      const qs = new URLSearchParams(location.search);
+      const tk = qs.get('token');
       if (tk) {
         setToken(tk);
-        p.delete('token');
-        window.history.replaceState({}, '', window.location.pathname);
+        qs.delete('token');
+        history.replaceState({}, '', location.pathname);
       }
       if (!(await isTokenValid())) {
         clearToken();
-        window.location.href = LOGIN_URL;
+        location.href = LOGIN_URL;
       }
     })();
   }, []);
 
-  /* ---------- costanti iniziali ----------------------------------- */
-  const currentYear  = new Date().getFullYear();
-  const storedYear   = Number(localStorage.getItem('selectedYear'));
-  const initialYear  = storedYear || currentYear;
-
-  const allYears = useMemo(
+  /* ---------- iniziali ------------------------------------------- */
+  const currentYear = new Date().getFullYear();
+  const allYears    = useMemo(
     () => Array.from({ length: 10 }, (_, i) => currentYear - i),
     [currentYear],
   );
 
-  /* ---------- state ------------------------------------------------ */
-  const [years, setYears]                 = useState(allYears);
-  const [selectedYear, setSelectedYear]   = useState(initialYear);
-  const [turni, setTurni]                 = useState([]);
+  /* ---------- state ---------------------------------------------- */
+  const [years, setYears]               = useState(allYears);
+  const [selectedYear, setSelectedYear] = useState(
+    Number(localStorage.getItem('selectedYear')) || currentYear,
+  );
+  const [turni, setTurni]               = useState([]);
   const [selectedTurno, setSelectedTurno] = useState(null);
-  const [partecipanti, setPartecipanti]   = useState([]);
-  const [saldoMap, setSaldoMap]           = useState({});
+  const [partecipanti, setPartecipanti] = useState([]);
+  const [saldoMap, setSaldoMap]         = useState({});
 
-  const [openModal, setOpenModal]         = useState(false);
-  const [modalData, setModalData]         = useState(null);
+  const [openModal, setOpenModal]       = useState(false);
+  const [modalData, setModalData]       = useState(null);
 
   const [query, setQuery] = useState('');
 
-  /* ── toggle riepilogo (persistente) ────────────────────────────── */
-  const [showSummary, setShowSummary] = useState(() => {
-    const s = localStorage.getItem('showSummary');
-    return s === null ? true : JSON.parse(s);
-  });
+  /* riepilogo toggle */
+  const [showSummary, setShowSummary] = useState(
+    JSON.parse(localStorage.getItem('showSummary') ?? 'true'),
+  );
   const toggleSummary = () =>
     setShowSummary((v) => {
       localStorage.setItem('showSummary', JSON.stringify(!v));
       return !v;
     });
 
-  /* ── nuovo toggle PDF/Saldo (persistente) ──────────────────────── */
-  const [showPdf, setShowPdf] = useState(() => {
-    const s = localStorage.getItem('showPdf');
-    return s === null ? false : JSON.parse(s);
-  });
+  /* PDF / Mail toggle */
+  const [showPdf, setShowPdf] = useState(
+    JSON.parse(localStorage.getItem('showPdf') ?? 'false'),
+  );
   const togglePdf = () =>
     setShowPdf((v) => {
       localStorage.setItem('showPdf', JSON.stringify(!v));
       return !v;
     });
 
-  /*  selettori anno/turno visibili?                                  */
+  /* mappa e-mail inviate (persistente) */
+  const sentKey = (turnoId) => `sentMap_${turnoId}`;
+  const [sentMap, setSentMap] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(sentKey(selectedTurno?.id)) ?? '{}');
+    } catch { return {}; }
+  });
+
+  /* selettori visibili? */
   const [showSelectors, setShowSelectors] = useState(() => {
     return !(
       localStorage.getItem('selectedYear') &&
@@ -123,25 +121,22 @@ export default function App() {
     );
   });
 
-  /* forza refresh riepilogo */
+  /* refresh riepilogo */
   const [totVersion, setTotVersion] = useState(0);
   const bumpTotali = () => setTotVersion((v) => v + 1);
 
-  /* ------------------------------------------------------------------ */
-  /*  CARICA TURNI quando cambia l’anno                                 */
+  /* ---------- load turni on year change -------------------------- */
   useEffect(() => {
-    if (!selectedYear) return;
-    fetchTurni(selectedYear);
+    if (selectedYear) fetchTurni(selectedYear);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYear]);
 
-  /* ---------------- API calls -------------------------------------- */
+  /* ---------------- API calls ------------------------------------ */
   const fetchTurni = async (year) => {
     const res  = await fetch(`${API_BASE}/recuperaTurni.php?year=${year}`, {
       headers: authHeader(),
     });
-    const data = await res.json();
-    const arr  = extractArray(data);
+    const arr  = extractArray(await res.json());
 
     setTurni(arr);
     setPartecipanti([]);
@@ -149,13 +144,10 @@ export default function App() {
 
     /* anni dinamici */
     const found = new Set([...allYears]);
-    arr.forEach((t) => {
-      const y = extractYear(t);
-      if (y) found.add(Number(y));
-    });
-    setYears(Array.from(found).sort((a, b) => b - a));
+    arr.forEach((t) => found.add(extractYear(t)));
+    setYears([...found].sort((a, b) => b - a));
 
-    /* ripristina eventuale turno salvato */
+    /* turno salvato */
     const savedId = Number(localStorage.getItem('selectedTurnoId'));
     if (savedId) {
       const match = arr.find((t) => Number(t.id) === savedId);
@@ -168,7 +160,7 @@ export default function App() {
   };
 
   const fetchDettagli = async (idTurno) => {
-    /* lista partecipanti */
+    /* lista */
     const resP = await fetch(`${API_BASE}/recuperaDettagli.php`, {
       method: 'POST',
       headers: authHeader(),
@@ -176,17 +168,22 @@ export default function App() {
     });
     setPartecipanti(extractArray(await resP.json()));
 
-    /* mappa saldi */
+    /* saldi */
     const riepilogo = await recuperaRiepilogoCassa(idTurno);
-    const map = {};
+    const m = {};
     riepilogo.forEach((r) => {
-      map[getIdAnag(r)] =
+      m[getIdAnag(r)] =
         Number(r.totale_in_cassa ?? r.totaleInCassa ?? 0);
     });
-    setSaldoMap(map);
+    setSaldoMap(m);
+
+    /* carica sentMap salvata per questo turno */
+    try {
+      setSentMap(JSON.parse(localStorage.getItem(sentKey(idTurno)) ?? '{}'));
+    } catch { setSentMap({}); }
   };
 
-  /* ---------------- HANDLERS -------------------------------------- */
+  /* ---------------- HANDLERS ------------------------------------- */
   const handleYear = (y) => {
     setSelectedYear(y);
     localStorage.setItem('selectedYear', y);
@@ -207,20 +204,52 @@ export default function App() {
     setOpenModal(true);
   };
 
-  /* PDF ---------------------------------------------------------------- */
+  /* PDF download */
   const handlePdf = async (p) => {
-    try {
-      const cassa = await recuperaCassa(getIdAnag(p), selectedTurno.id);
-      generaPdfCassa(
-        { nome: p.nome ?? p.Nome, cognome: p.cognome ?? p.Cognome },
-        cassa,
-        selectedTurno,
-      );
-    } catch (e) {
-      console.error('Errore PDF:', e);
-      alert('Impossibile generare il PDF');
-    }
+    const cassa = await recuperaCassa(getIdAnag(p), selectedTurno.id);
+    generaPdfCassa(
+      { nome: p.nome ?? p.Nome, cognome: p.cognome ?? p.Cognome },
+      cassa,
+      selectedTurno,
+    );                              /* scarica – no base64 */
   };
+
+  /* MAIL send */
+/* MAIL send */
+const handleMail = async (p) => {
+  try {
+    // 1. dati di cassa del partecipante
+    const cassa  = await recuperaCassa(getIdAnag(p), selectedTurno.id);
+
+    // 2. genera il PDF in Base-64 (niente download)
+    const base64 = await generaPdfCassa(
+      { nome: p.nome ?? p.Nome, cognome: p.cognome ?? p.Cognome },
+      cassa,
+      selectedTurno,
+      /* silent */ true          // ⇒ la funzione ora restituisce la stringa Base-64
+    );
+
+    // 3. invio mail con allegato
+    await invioMailCassaConAllegato(
+      selectedTurno.id,
+      getIdAnag(p),
+      base64,
+    );
+
+    // 4. segna come “inviata” e persiste su localStorage
+    setSentMap((m) => {
+      const next = { ...m, [getIdAnag(p)]: true };
+      localStorage.setItem(
+        `sentMap_${selectedTurno.id}`,
+        JSON.stringify(next),
+      );
+      return next;
+    });
+  } catch (e) {
+    console.error(e);
+    alert('Invio e-mail fallito');
+  }
+};
 
   /* filtro ricerca -------------------------------------------------- */
   const q = query.trim().toLowerCase();
@@ -232,14 +261,13 @@ export default function App() {
       })
     : partecipanti;
 
-  /* ------------------------------------------------------------------ */
-  /*  RENDER                                                            */
+  /* ---------------- RENDER --------------------------------------- */
   return (
     <>
       <NavBar
         showSummary={showSummary}
         toggleSummary={toggleSummary}
-        showPdf={showPdf}          /* nuovo toggle */
+        showPdf={showPdf}
         togglePdf={togglePdf}
         toggleSelectors={() => setShowSelectors((s) => !s)}
       />
@@ -248,7 +276,6 @@ export default function App() {
 
       <div className="min-h-screen w-full bg-muted/40 flex flex-col items-center
                       sm:py-12 px-3 sm:px-6 gap-8">
-
         {/* ---------- SELETTORI ----------------------------------- */}
         {showSelectors && (
           <Card className="w-full sm:max-w-2xl lg:max-w-5xl space-y-6">
@@ -292,8 +319,7 @@ export default function App() {
         {selectedTurno && showSummary && (
           <TotaliCassa key={totVersion} turnoId={selectedTurno.id} />
         )}
-
-        {/* ---------- LISTA PARTECIPANTI --------------------------- */}
+        {/* --------- LISTA PARTECIPANTI ----------------------------- */}
         {selectedTurno && (
           <Card className="w-full sm:max-w-2xl lg:max-w-5xl space-y-6">
             <SectionTitle>{selectedTurno.titolo}</SectionTitle>
@@ -309,20 +335,17 @@ export default function App() {
             />
 
             {filtered.length === 0 ? (
-              <p className="text-center mt-4 text-sm text-zinc-500">
-                Nessun risultato
-              </p>
+              <p className="text-center mt-4 text-sm text-zinc-500">Nessun risultato</p>
             ) : (
               <ul className="flex flex-col gap-4">
                 {filtered.map((p, i) => {
                   const id    = getIdAnag(p);
                   const saldo = saldoMap[id] ?? 0;
-                  const color =
-                    saldo >= 0 ? 'text-emerald-600' : 'text-rose-600';
+                  const color = saldo >= 0 ? 'text-emerald-600' : 'text-rose-600';
 
                   return (
                     <li
-                      key={p?.id ?? i}
+                      key={id ?? i}
                       className="flex items-center rounded-xl bg-muted px-4 py-3
                                  shadow-sm hover:ring-2 hover:ring-blue-600/60"
                     >
@@ -335,16 +358,31 @@ export default function App() {
                         {(p?.nome ?? p?.Nome) + ' ' + (p?.cognome ?? p?.Cognome)}
                       </button>
 
-                      {/* saldo / pdf */}
+                      {/* area azioni o saldo */}
                       {showPdf ? (
-                        <button
-                          onClick={() => handlePdf(p)}
-                          title="Scarica PDF"
-                          className="ml-4 shrink-0 w-10 h-10 flex items-center justify-center
-                                     rounded-lg hover:bg-blue-200 text-blue-700 text-xl"
-                        >
-                          🧾
-                        </button>
+                        <div className="flex gap-2 ml-3 shrink-0">
+                          {/* PDF */}
+                          <button
+                            onClick={() => handlePdf(p)}
+                            title="Scarica PDF"
+                            className="w-9 h-9 flex items-center justify-center
+                                       rounded-lg hover:bg-blue-200 text-blue-700 text-lg"
+                          >
+                            🧾
+                          </button>
+
+                          {/* MAIL */}
+                          <button
+                            onClick={() => handleMail(p)}
+                            title={sentMap[id] ? 'Inviata' : 'Invia e-mail'}
+                            className={`w-9 h-9 flex items-center justify-center rounded-lg
+                                        ${sentMap[id]
+                                          ? 'bg-emerald-200 text-emerald-700'
+                                          : 'hover:bg-emerald-100 text-emerald-700'}`}
+                          >
+                            {sentMap[id] ? '✅' : '✉️'}
+                          </button>
+                        </div>
                       ) : (
                         <span
                           onClick={() => handleClickPartecipante(p)}
