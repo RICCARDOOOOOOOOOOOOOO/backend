@@ -68,13 +68,13 @@ export default async function generaPdfCassa(anag, cassa, turno, silent = false)
   const good      = cassa.totaleInCassa >= 0;
   doc.setFillColor(...(good ? emerald200 : rose200));
   doc.roundedRect(saldoCard.x, saldoCard.y, saldoCard.w, saldoCard.h, 8, 8, 'FD');
-  writeCentered(doc, 'SALDO', saldoCard, 11, true);
-  writeCentered(
-    doc,
-    `${cassa.totaleInCassa.toFixed(2)} €`,
-    { ...saldoCard, y: saldoCard.y + 22 },
-    16,
-  );
+    writeCentered(doc, 'SALDO', {
+    x: saldoCard.x, y: saldoCard.y + 18, w: saldoCard.w,
+  }, 11, true);
+
+  writeCentered(doc, cassa.totaleInCassa.toFixed(2) + ' €', {
+    x: saldoCard.x, y: saldoCard.y + 40, w: saldoCard.w,
+  }, 16);
   y += saldoCard.h + 28;
 
   /* ---------------- Cards ENTRATE/USCITE -------------------------- */
