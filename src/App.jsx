@@ -220,16 +220,24 @@ export default function App() {
   const handlePdfWithMail = async (p) => {
     try {
       const cassa = await recuperaCassa(getIdAnag(p), selectedTurno.id);
-      const base64attachment = await generaPdfCassaBase64(
+      const blob = await generaPdfCassaBase64(
         { nome: p.nome ?? p.Nome, cognome: p.cognome ?? p.Cognome },
         cassa,
         selectedTurno,
       );
 
-      console.log("base64attachment data is ok");       
-      const sendMailReturn = await invioMailCassaConAllegato(selectedTurno.id, getIdAnag(p), base64attachment);
-      if (sendMailReturn?.success) {
-        alert('Email inviata con successo!');
+      var reader = new FileReader();
+        reader.readAsDataURL(blob); 
+        reader.onloadend = async function() {
+          var base64data = reader.result;                
+          console.log(base64data);
+
+          console.log("base64attachment data is ok");       
+          const sendMailReturn = await invioMailCassaConAllegato(selectedTurno.id, getIdAnag(p), base64data);
+          if (sendMailReturn?.success) {
+            alert('Email inviata con successo!');
+          }
+
       }
     } catch (e) {
       console.error('Errore Invio PDF:', e);
