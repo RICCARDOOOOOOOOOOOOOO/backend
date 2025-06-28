@@ -1,8 +1,7 @@
 /* ------------------------------------------------------------------- */
-/*  App.jsx – versione con                                          */
-/*  • check token + redirect login                                    */
-/*  • pulsante PDF/emoj 🧾                                             */
-/*  • padding / font mobile già ridotti                               */
+/*  App.jsx                                                            */
+/*  – check token + redirect login                                     */
+/*  – toggle riepilogo & toggle PDF/Saldo                              */
 /* ------------------------------------------------------------------- */
 import React, { useMemo, useState, useEffect } from 'react';
 import Card         from './components/card';
@@ -11,19 +10,14 @@ import CassaModal   from './components/ModalCassa';
 import TotaliCassa  from './components/TotaliCassa';
 import NavBar       from './components/NavBar';
 
-import {
-  recuperaRiepilogoCassa,
-  recuperaCassa,
-} from './services/cassa';
-
+import { recuperaRiepilogoCassa, recuperaCassa } from './services/cassa';
 import generaPdfCassa from './services/generaPdfCassa';
 
-/* utilità auth ------------------------------------------------------ */
 import {
   isTokenValid,
   setToken,
   clearToken,
-  authHeader,             // header già pronto con Bearer
+  authHeader,
 } from './services/auth';
 
 /* ------------------------------------------------------------------ */
@@ -34,15 +28,22 @@ const API_BASE =
 
 const LOGIN_URL =
   'https://gestione.parrocchiacarpaneto.com/login/#/?returnUrl=' +
-  ( location.protocol === 'https:' ? encodeURIComponent('https://gestione.parrocchiacarpaneto.com/cassa_r')
-          : encodeURIComponent('http://localhost:5173'));
+  encodeURIComponent(
+    location.hostname === 'localhost'
+      ? 'http://localhost:5173'
+      : 'https://gestione.parrocchiacarpaneto.com/cassa_r',
+  );
 
 const extractArray = (d) =>
-  Array.isArray(d)                 ? d
-  : Array.isArray(d?.returnObject) ? d.returnObject
-  : Array.isArray(d?.turni)        ? d.turni
-  : Array.isArray(d?.partecipanti) ? d.partecipanti
-  : [];
+  Array.isArray(d)
+    ? d
+    : Array.isArray(d?.returnObject)
+    ? d.returnObject
+    : Array.isArray(d?.turni)
+    ? d.turni
+    : Array.isArray(d?.partecipanti)
+    ? d.partecipanti
+    : [];
 
 const extractYear = (t) =>
   t?.year ?? t?.anno ?? (t?.inizio ? new Date(t.inizio).getFullYear() : null);
@@ -50,22 +51,19 @@ const extractYear = (t) =>
 const getIdAnag = (p) =>
   p?.id_anag ?? p?.idanag ?? p?.id ?? p?.idAnag ?? null;
 
-/* ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------- */
 export default function App() {
-  /* ---------- ①  controllo token all’avvio ----------------------- */
+  /* ───────────────── auth all’avvio ────────────────────────────── */
   useEffect(() => {
     (async () => {
-      /* token nella querystring (ritorno dal login) ---------------- */
-      const params = new URLSearchParams(window.location.search);
-      const tkUrl  = params.get('token');
-      if (tkUrl) {
-        setToken(tkUrl);
-        params.delete('token');
+      const p = new URLSearchParams(window.location.search);
+      const tk = p.get('token');
+      if (tk) {
+        setToken(tk);
+        p.delete('token');
         window.history.replaceState({}, '', window.location.pathname);
       }
-
-      const ok = await isTokenValid();
-      if (!ok) {
+      if (!(await isTokenValid())) {
         clearToken();
         window.location.href = LOGIN_URL;
       }
@@ -73,9 +71,9 @@ export default function App() {
   }, []);
 
   /* ---------- costanti iniziali ----------------------------------- */
-  const currentYear = new Date().getFullYear();
-  const storedYear  = Number(localStorage.getItem('selectedYear'));
-  const initialYear = storedYear || currentYear;
+  const currentYear  = new Date().getFullYear();
+  const storedYear   = Number(localStorage.getItem('selectedYear'));
+  const initialYear  = storedYear || currentYear;
 
   const allYears = useMemo(
     () => Array.from({ length: 10 }, (_, i) => currentYear - i),
@@ -83,30 +81,41 @@ export default function App() {
   );
 
   /* ---------- state ------------------------------------------------ */
-  const [years,         setYears]         = useState(allYears);
-  const [selectedYear,  setSelectedYear]  = useState(initialYear);
-  const [turni,         setTurni]         = useState([]);
+  const [years, setYears]                 = useState(allYears);
+  const [selectedYear, setSelectedYear]   = useState(initialYear);
+  const [turni, setTurni]                 = useState([]);
   const [selectedTurno, setSelectedTurno] = useState(null);
-  const [partecipanti,  setPartecipanti]  = useState([]);
-  const [saldoMap,      setSaldoMap]      = useState({});
+  const [partecipanti, setPartecipanti]   = useState([]);
+  const [saldoMap, setSaldoMap]           = useState({});
 
-  const [openModal,     setOpenModal]     = useState(false);
-  const [modalData,     setModalData]     = useState(null);
+  const [openModal, setOpenModal]         = useState(false);
+  const [modalData, setModalData]         = useState(null);
 
   const [query, setQuery] = useState('');
 
-  /* riepilogo on/off (persistente) ---------------------------------- */
+  /* ── toggle riepilogo (persistente) ────────────────────────────── */
   const [showSummary, setShowSummary] = useState(() => {
-    const saved = localStorage.getItem('showSummary');
-    return saved === null ? true : JSON.parse(saved);
+    const s = localStorage.getItem('showSummary');
+    return s === null ? true : JSON.parse(s);
   });
   const toggleSummary = () =>
-    setShowSummary((p) => {
-      const n = !p;
-      localStorage.setItem('showSummary', JSON.stringify(n));
-      return n;
+    setShowSummary((v) => {
+      localStorage.setItem('showSummary', JSON.stringify(!v));
+      return !v;
     });
 
+  /* ── nuovo toggle PDF/Saldo (persistente) ──────────────────────── */
+  const [showPdf, setShowPdf] = useState(() => {
+    const s = localStorage.getItem('showPdf');
+    return s === null ? false : JSON.parse(s);
+  });
+  const togglePdf = () =>
+    setShowPdf((v) => {
+      localStorage.setItem('showPdf', JSON.stringify(!v));
+      return !v;
+    });
+
+  /*  selettori anno/turno visibili?                                  */
   const [showSelectors, setShowSelectors] = useState(() => {
     return !(
       localStorage.getItem('selectedYear') &&
@@ -114,19 +123,19 @@ export default function App() {
     );
   });
 
+  /* forza refresh riepilogo */
   const [totVersion, setTotVersion] = useState(0);
-  const bumpTotali   = () => setTotVersion((v) => v + 1);
+  const bumpTotali = () => setTotVersion((v) => v + 1);
 
   /* ------------------------------------------------------------------ */
-  /* carica turni dell’anno scelto ----------------------------------- */
+  /*  CARICA TURNI quando cambia l’anno                                 */
   useEffect(() => {
     if (!selectedYear) return;
     fetchTurni(selectedYear);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYear]);
 
-  /* ------------------------------------------------------------------ */
-  /*  API calls                                                        */
+  /* ---------------- API calls -------------------------------------- */
   const fetchTurni = async (year) => {
     const res  = await fetch(`${API_BASE}/recuperaTurni.php?year=${year}`, {
       headers: authHeader(),
@@ -138,7 +147,7 @@ export default function App() {
     setPartecipanti([]);
     setSaldoMap({});
 
-    /* aggiorna lista anni dinamica */
+    /* anni dinamici */
     const found = new Set([...allYears]);
     arr.forEach((t) => {
       const y = extractYear(t);
@@ -177,8 +186,7 @@ export default function App() {
     setSaldoMap(map);
   };
 
-  /* ------------------------------------------------------------------ */
-  /*  HANDLERS                                                          */
+  /* ---------------- HANDLERS -------------------------------------- */
   const handleYear = (y) => {
     setSelectedYear(y);
     localStorage.setItem('selectedYear', y);
@@ -231,6 +239,8 @@ export default function App() {
       <NavBar
         showSummary={showSummary}
         toggleSummary={toggleSummary}
+        showPdf={showPdf}          /* nuovo toggle */
+        togglePdf={togglePdf}
         toggleSelectors={() => setShowSelectors((s) => !s)}
       />
 
@@ -239,16 +249,18 @@ export default function App() {
       <div className="min-h-screen w-full bg-muted/40 flex flex-col items-center
                       sm:py-12 px-3 sm:px-6 gap-8">
 
-        {/* ---------- SELETTORI anno/turno --------------------------- */}
+        {/* ---------- SELETTORI ----------------------------------- */}
         {showSelectors && (
           <Card className="w-full sm:max-w-2xl lg:max-w-5xl space-y-6">
             <SectionTitle>Seleziona Turno</SectionTitle>
 
+            {/* select anni */}
             <select
               value={selectedYear}
               onChange={(e) => handleYear(Number(e.target.value))}
-              className="block mx-auto w-40 rounded-xl border border-zinc-300 bg-white py-2 pl-3 pr-8 text-center text-sm
-                         shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600
+              className="block mx-auto w-40 rounded-xl border border-zinc-300 bg-white py-2 pl-3 pr-8
+                         text-center text-sm shadow-sm focus:outline-none
+                         focus:ring-2 focus:ring-blue-600
                          dark:bg-zinc-800 dark:border-zinc-700"
             >
               {years.map((y) => (
@@ -256,6 +268,7 @@ export default function App() {
               ))}
             </select>
 
+            {/* bottoni turni */}
             <div className="flex flex-wrap gap-4 justify-center">
               {turni.map((t, i) => (
                 <button
@@ -285,6 +298,7 @@ export default function App() {
           <Card className="w-full sm:max-w-2xl lg:max-w-5xl space-y-6">
             <SectionTitle>{selectedTurno.titolo}</SectionTitle>
 
+            {/* ricerca */}
             <input
               type="text"
               value={query}
@@ -305,13 +319,14 @@ export default function App() {
                   const saldo = saldoMap[id] ?? 0;
                   const color =
                     saldo >= 0 ? 'text-emerald-600' : 'text-rose-600';
+
                   return (
                     <li
                       key={p?.id ?? i}
                       className="flex items-center rounded-xl bg-muted px-4 py-3
                                  shadow-sm hover:ring-2 hover:ring-blue-600/60"
                     >
-                      {/* nome (click → modal) */}
+                      {/* nome */}
                       <button
                         onClick={() => handleClickPartecipante(p)}
                         className="flex-1 text-left truncate focus:outline-none
@@ -320,23 +335,24 @@ export default function App() {
                         {(p?.nome ?? p?.Nome) + ' ' + (p?.cognome ?? p?.Cognome)}
                       </button>
 
-                      {/* saldo */}
-                      <span
-                        onClick={() => handleClickPartecipante(p)}
-                        className={`w-24 text-right font-semibold ${color}`}
-                      >
-                        {saldo.toFixed(2)} €
-                      </span>
-
-                      {/* PDF */}
-                      <button
-                        onClick={() => handlePdf(p)}
-                        title="Scarica PDF"
-                        className="ml-4 shrink-0 w-10 h-10 flex items-center justify-center
-                                   rounded-lg hover:bg-blue-200 text-blue-700 text-xl"
-                      >
-                        🧾
-                      </button>
+                      {/* saldo / pdf */}
+                      {showPdf ? (
+                        <button
+                          onClick={() => handlePdf(p)}
+                          title="Scarica PDF"
+                          className="ml-4 shrink-0 w-10 h-10 flex items-center justify-center
+                                     rounded-lg hover:bg-blue-200 text-blue-700 text-xl"
+                        >
+                          🧾
+                        </button>
+                      ) : (
+                        <span
+                          onClick={() => handleClickPartecipante(p)}
+                          className={`w-24 text-right font-semibold ${color}`}
+                        >
+                          {saldo.toFixed(2)} €
+                        </span>
+                      )}
                     </li>
                   );
                 })}

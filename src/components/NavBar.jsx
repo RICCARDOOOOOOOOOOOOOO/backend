@@ -7,6 +7,8 @@ import { Menu, X, Home } from 'lucide-react';
 export default function NavBar({
   showSummary,
   toggleSummary,
+  showPdf,
+  togglePdf,
   toggleSelectors,
 }) {
   const [open, setOpen] = useState(false);
@@ -43,16 +45,30 @@ export default function NavBar({
       {/* menu a scomparsa */}
       {open && (
         <div className="border-t bg-white dark:bg-zinc-900 px-6 py-5 space-y-5">
-          {/* SWITCH riepilogo con css 3-D */}
+          {/* SWITCH riepilogo */}
           <label className="toggle-container">
             <input
-              id="toggle-checkbox"
               type="checkbox"
+              className="toggle-checkbox"
               checked={showSummary}
               onChange={toggleSummary}
             />
             <span className="toggle-label toggle-scale" />
             <span className="text-sm">Riepilogo finanziario</span>
+          </label>
+
+          {/* SWITCH mostra PDF / saldo */}
+          <label className="toggle-container">
+            <input
+              type="checkbox"
+              className="toggle-checkbox"
+              checked={showPdf}
+              onChange={togglePdf}
+            />
+            <span className="toggle-label toggle-scale" />
+            <span className="text-sm">
+              {showPdf ? 'Mostra PDF' : 'Mostra saldo'}
+            </span>
           </label>
 
           {/* bottone cambio selezione */}

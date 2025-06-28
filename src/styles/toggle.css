@@ -1,63 +1,68 @@
 /* ------------------------------------------------------------------ */
-/*  3-D toggle switch (ridotto al 50 % con .toggle-scale)             */
+/*  3-D toggle switch (ridotto al 50 % con .toggle-scale)              */
 /* ------------------------------------------------------------------ */
 
-.toggle-container {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+.toggle-container{
+  display:flex;
+  align-items:center;
+  gap:0.75rem;
 }
 
-.toggle-label {
-  height: 60px;
-  width: 120px;
-  background-color: #ffffff;
-  border-radius: 30px;
-  box-shadow: inset 0 0 5px 4px rgba(255, 255, 255, 1),
-    inset 0 0 20px 1px rgba(0, 0, 0, 0.488),
-    10px 20px 30px rgba(0, 0, 0, 0.096), inset 0 0 0 3px rgba(0, 0, 0, 0.3);
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  position: relative;
-  transition: transform 0.4s;
+/* ——— track ——— */
+.toggle-label{
+  height:60px;
+  width:120px;
+  background:#fff;
+  border-radius:30px;
+  box-shadow:
+    inset 0 0 5px 4px #fff,
+    inset 0 0 20px 1px rgba(0,0,0,.48),
+    10px 20px 30px rgba(0,0,0,.096),
+    inset 0 0 0 3px rgba(0,0,0,.3);
+  display:flex;
+  align-items:center;
+  cursor:pointer;
+  position:relative;
+  transition:transform .4s;
 }
 
-.toggle-label:hover {
-  transform: perspective(120px) rotateX(4deg) rotateY(-4deg) scale(0.6);
+/* hover 3-D ( leggero +5 % ) */
+.toggle-label:hover{
+  transform:perspective(120px) rotateX(4deg) rotateY(-4deg) scale(0.6);
+}
+.toggle-checkbox:checked + .toggle-label:hover{
+  transform:perspective(120px) rotateX(-4deg) rotateY(4deg) scale(0.6);
 }
 
-#toggle-checkbox:checked ~ .toggle-label:hover {
-  transform: perspective(120px) rotateX(-4deg) rotateY(4deg) scale(0.6);
+/* ——— input nascosto ——— */
+.toggle-checkbox{
+  display:none;
 }
 
-
-#toggle-checkbox {
-  display: none;
+/* pallino a destra quando “on” */
+.toggle-checkbox:checked + .toggle-label::before{
+  left:70px;
+  background:#000;
+  background-image:linear-gradient(315deg,#000 0%,#414141 70%);
+  transition:.4s;
 }
 
-#toggle-checkbox:checked ~ .toggle-label::before {
-  left: 70px;
-  background-color: #000000;
-  background-image: linear-gradient(315deg, #000000 0%, #414141 70%);
-  transition: 0.4s;
-}
-
-.toggle-label::before {
-  position: absolute;
-  content: '';
-  height: 40px;
-  width: 40px;
-  border-radius: 50%;
-  background-color: #000000;
-  background-image: linear-gradient(130deg, #757272 10%, #ffffff 11%, #726f6f 62%);
-  left: 10px;
-  box-shadow: 0 2px 1px rgba(0, 0, 0, 0.3), 10px 10px 10px rgba(0, 0, 0, 0.3);
-  transition: 0.4s;
+/* pallino di scorrimento */
+.toggle-label::before{
+  content:'';
+  position:absolute;
+  height:40px;
+  width:40px;
+  border-radius:50%;
+  left:10px;
+  background:#000;
+  background-image:linear-gradient(130deg,#757272 10%,#fff 11%,#726f6f 62%);
+  box-shadow:0 2px 1px rgba(0,0,0,.3),10px 10px 10px rgba(0,0,0,.3);
+  transition:.4s;
 }
 
 /* riduzione 50 % per adattarsi alla nav-bar */
-.toggle-scale {
-  transform: scale(0.5);
-  transform-origin: center;
+.toggle-scale{
+  transform:scale(.5);
+  transform-origin:center;
 }
