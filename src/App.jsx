@@ -105,17 +105,9 @@ export default function App() {
       return !v;
     });
 
-/* --- mail “già inviata” ------------------------------------------- */
-const sentKey = (turnoId) => `sentMap_${turnoId}`;
-const [sentMap, setSentMap] = useState(() => {
-  /* se ho già un turno salvato carico la cache relativa, altrimenti {} */
-  const tId = Number(localStorage.getItem('selectedTurnoId'));
-  try {
-    return JSON.parse(localStorage.getItem(sentKey(tId)) || '{}');
-  } catch {
-    return {};
-  }
-});
+/* mappa id_anag → true|false (deriva unicamente dall’API) */
+const [sentMap, setSentMap] = useState({});
+
 
 
 
@@ -165,39 +157,36 @@ const [sentMap, setSentMap] = useState(() => {
     }
   };
 
-const fetchDettagli = async (idTurno) => { 
-  /* lista partecipanti */
+/* -------------------------------------------------------------- */
+/*  carica lista + saldi + flag “sent”                            */
+/* -------------------------------------------------------------- */
+const fetchDettagli = async (idTurno) => {
+  /* 1. lista partecipanti -------------------------------------- */
   const resP = await fetch(`${API_BASE}/recuperaDettagli.php`, {
     method: 'POST',
     headers: authHeader(),
-    body: JSON.stringify({ idturno: idTurno }),
+    body  : JSON.stringify({ idturno: idTurno }),
   });
   setPartecipanti(extractArray(await resP.json()));
 
-  /* riepilogo: saldo + flag “sent” (true/false) */
-  const riepilogo = await recuperaRiepilogoCassa(idTurno);
+  /* 2. riepilogo: saldo + sent --------------------------------- */
+  const riepilogo  = await recuperaRiepilogoCassa(idTurno);
 
   const saldoTmp = {};
   const sentTmp  = {};
-  riepilogo.forEach((r) => {
-    const id        = getIdAnag(r);
-    saldoTmp[id]    = Number(r.totale_in_cassa ?? r.totaleInCassa ?? 0);
-    /* l’API può restituire true/1/"1"/"true" – tutto il resto è false */
-  sentTmp[id] =
-    r.sent === true || r.sent === 1 || r.sent === '1' || r.sent === 'true';
 
+  riepilogo.forEach((r) => {
+    const id          = getIdAnag(r);
+    saldoTmp[id]      = Number(r.totale_in_cassa ?? r.totaleInCassa ?? 0);
+    /* normalizza qualsiasi forma (true, 1, "1", "true"…) */
+    sentTmp[id]       =
+      r.sent === true || r.sent === 1 || r.sent === '1' || r.sent === 'true';
   });
 
-  /* merge con eventuale cache locale (così non si perde al refresh) */
-  const cached = JSON.parse(localStorage.getItem(sentKey(idTurno)) ?? '{}');
-  const merged = { ...cached, ...sentTmp };
-
   setSaldoMap(saldoTmp);
-  setSentMap(merged);
-
-  /* persisto subito */
-  localStorage.setItem(sentKey(idTurno), JSON.stringify(merged));
+  setSentMap(sentTmp);            // ← nessun localStorage
 };
+
 
 
   /* ---------------- HANDLERS ------------------------------------- */
@@ -231,7 +220,7 @@ const fetchDettagli = async (idTurno) => {
     );                              /* scarica – no base64 */
   };
 
-  /* MAIL send */
+
 /* MAIL send */
 const handleMail = async (p) => {
   try {
@@ -253,12 +242,13 @@ const handleMail = async (p) => {
       base64,
     );
 
+    /* ricarico il riepilogo: il backend ora restituisce sent=true */
+    await fetchDettagli(selectedTurno.id);
+
+
     // 4. segna come “inviata” (solo in state: la prossima volta arriverà già true dal recuperaRiepilogoCassa.php)
-    setSentMap(m => {
-  const next = { ...m, [getIdAnag(p)]: true };
-  localStorage.setItem(sentKey(selectedTurno.id), JSON.stringify(next));
-  return next;
-});
+    setSentMap((m) => ({ ...m, [getIdAnag(p)]: true }));
+
 
       } catch (e) {
         console.error(e);
