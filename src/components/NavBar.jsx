@@ -10,6 +10,7 @@ export default function NavBar({
   showPdf,
   togglePdf,
   toggleSelectors,
+  onTurnoPdf
 }) {
   const [open, setOpen] = useState(false);
 
@@ -81,6 +82,18 @@ export default function NavBar({
           >
             Cambio selezione anno/turno
           </button>
+
+          {/* PDF riepilogo turno */}
+          <button
+            onClick={() => {
+                onTurnoPdf?.();     // genera il PDF
+                setOpen(false);     // chiude il menu
+            }}
+          className="w-full rounded-lg border px-4 py-2 text-sm hover:bg-muted"
+          >
+          Scarica PDF turno
+          </button>
+
         </div>
       )}
     </header>

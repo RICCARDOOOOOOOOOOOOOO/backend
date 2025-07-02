@@ -14,6 +14,7 @@ import {
   invioMailCassaConAllegato,          /* ★ NEW */
 } from './services/cassa';
 import generaPdfCassa                  from './services/generaPdfCassa';
+import generaPdfTurno                  from './services/generaPdfTurno';   // 👈 nuovo
 
 import { isTokenValid, setToken, clearToken, authHeader } from './services/auth';
 
@@ -232,40 +233,69 @@ const fetchDettagli = async (idTurno) => {
   };
 
 
-/* MAIL send */
-const handleMail = async (p) => {
-  try {
-    // 1. dati di cassa del partecipante
-    const cassa  = await recuperaCassa(getIdAnag(p), selectedTurno.id);
+  /* MAIL send */
+  const handleMail = async (p) => {
+    try {
+      // 1. dati di cassa del partecipante
+      const cassa  = await recuperaCassa(getIdAnag(p), selectedTurno.id);
 
-    // 2. genera il PDF in Base-64 (niente download)
-    const base64 = await generaPdfCassa(
-      { nome: p.nome ?? p.Nome, cognome: p.cognome ?? p.Cognome },
-      cassa,
-      selectedTurno,
-      /* silent */ true          // ⇒ la funzione ora restituisce la stringa Base-64
-    );
+      // 2. genera il PDF in Base-64 (niente download)
+      const base64 = await generaPdfCassa(
+        { nome: p.nome ?? p.Nome, cognome: p.cognome ?? p.Cognome },
+        cassa,
+        selectedTurno,
+        /* silent */ true          // ⇒ la funzione ora restituisce la stringa Base-64
+      );
 
-    // 3. invio mail con allegato
-    await invioMailCassaConAllegato(
-      selectedTurno.id,
-      getIdAnag(p),
-      base64,
-    );
+      // 3. invio mail con allegato
+      await invioMailCassaConAllegato(
+        selectedTurno.id,
+        getIdAnag(p),
+        base64,
+      );
 
-    /* ricarico il riepilogo: il backend ora restituisce sent=true */
-    await fetchDettagli(selectedTurno.id);
-
-
-    // 4. segna come “inviata” (solo in state: la prossima volta arriverà già true dal recuperaRiepilogoCassa.php)
-    setSentMap((m) => ({ ...m, [getIdAnag(p)]: true }));
+      /* ricarico il riepilogo: il backend ora restituisce sent=true */
+      await fetchDettagli(selectedTurno.id);
 
 
-      } catch (e) {
-        console.error(e);
-        alert('Invio e-mail fallito');
+      // 4. segna come “inviata” (solo in state: la prossima volta arriverà già true dal recuperaRiepilogoCassa.php)
+      setSentMap((m) => ({ ...m, [getIdAnag(p)]: true }));
+
+
+        } catch (e) {
+          console.error(e);
+          alert('Invio e-mail fallito');
+        }
+      };
+
+  //  PDF riepilogo turno
+  const handleTurnoPdf = async () => {
+      if (!selectedTurno) return;
+
+      /* 1. riepilogo (lo usi già per i totali) */
+      const riepilogo = await recuperaRiepilogoCassa(selectedTurno.id);
+
+      /* 2. movimenti di tutti i ragazzi
+          – se hai già un endpoint apposito sostituisci a piacere.
+          – qui ri-uso quello per singolo partecipante e faccio il merge. */
+      const movs = [];
+      for (const r of riepilogo) {
+        const id = r.id_anag ?? r.idAnag ?? r.id_anagrafica;
+        const c  = await recuperaCassa(id, selectedTurno.id);
+        c.inserimenti.forEach((v) =>
+          movs.push({
+            nome    : r.nome,
+            cognome : r.cognome,
+            value   : v.value,
+            type    : v.type,
+          }),
+        );
       }
-    };
+
+      /* 3. genera e scarica il PDF */
+      await generaPdfTurno(selectedTurno, riepilogo, movs);
+  };
+
 
   /* filtro ricerca -------------------------------------------------- */
   const q = query.trim().toLowerCase();
@@ -286,6 +316,7 @@ const handleMail = async (p) => {
         showPdf={showPdf}
         togglePdf={togglePdf}
         toggleSelectors={() => setShowSelectors((s) => !s)}
+        onTurnoPdf={handleTurnoPdf}        /* 👈 nuovo prop */
       />
 
       <div className="pt-20" />
