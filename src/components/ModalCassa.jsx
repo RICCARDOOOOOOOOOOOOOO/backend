@@ -135,9 +135,9 @@ export default function CassaModal({
           <table className="min-w-full table-fixed text-xs sm:text-sm">
             {/* larghezze fisse */}
             <colgroup>
-              <col className="w-24" />  {/* Data   */}
-              <col className="w-20" />  {/* Valore */}
-              <col />                   {/* Tipo   */}
+              <col className="w-24" />{/* Data */}
+              <col className="w-20" />{/* Valore */}
+              <col />{/* Tipo */}
             </colgroup>
 
             <thead className="sticky top-0 bg-muted/50 backdrop-blur">

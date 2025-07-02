@@ -120,8 +120,19 @@ const [sentMap, setSentMap] = useState({});
   });
 
   /* refresh riepilogo */
+  /* refresh riepilogo + saldo lista */
   const [totVersion, setTotVersion] = useState(0);
-  const bumpTotali = () => setTotVersion((v) => v + 1);
+
+  const refreshData = async () => {
+    /* se non c’è ancora un turno selezionato esci */
+    if (!selectedTurno) return;
+
+    /* ricarica saldi + flag “sent” (fetchDettagli li aggiorna entrambi) */
+    await fetchDettagli(selectedTurno.id);
+
+    /* forza anche TotaliCassa a ridisegnarsi */
+    setTotVersion((v) => v + 1);
+  };
 
   /* ---------- load turni on year change -------------------------- */
   useEffect(() => {
@@ -411,7 +422,7 @@ const handleMail = async (p) => {
         onClose={() => setOpenModal(false)}
         partecipante={modalData}
         turno={selectedTurno}
-        onChanged={bumpTotali}
+        onChanged={refreshData}
       />
     </>
   );

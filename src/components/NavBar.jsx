@@ -73,7 +73,10 @@ export default function NavBar({
 
           {/* bottone cambio selezione */}
           <button
-            onClick={toggleSelectors}
+            onClick={() => {
+                toggleSelectors();   // apre il picker anno/turno
+                setOpen(false);      // chiude subito il menu a scomparsa
+            }}
             className="w-full rounded-lg border px-4 py-2 text-sm hover:bg-muted"
           >
             Cambio selezione anno/turno
