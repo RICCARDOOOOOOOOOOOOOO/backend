@@ -399,7 +399,7 @@ const fetchDettagli = async (idTurno) => {
                       {/* nome */}
                       <button
                         onClick={() => handleClickPartecipante(p)}
-                        className="flex-1 text-left truncate focus:outline-none
+                        className="no-border flex-1 text-left truncate focus:outline-none
                                    text-sm sm:text-base"
                       >
                         {(p?.nome ?? p?.Nome) + ' ' + (p?.cognome ?? p?.Cognome)}
