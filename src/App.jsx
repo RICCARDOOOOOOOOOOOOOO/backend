@@ -267,6 +267,28 @@ const fetchDettagli = async (idTurno) => {
           alert('Invio e-mail fallito');
         }
       };
+  /* ---------------- CALCOLO CONTANTE RESIDUO (“BAR”) ---------------- */
+  const calcCashRemaining = async () => {
+    if (!selectedTurno) {
+      alert('Seleziona prima un turno.');
+      return;
+    }
+
+    /* somma di TUTTE le spese con etichetta “BAR” di ogni partecipante */
+    let barSpes = 0;
+
+    for (const p of partecipanti) {
+      const c = await recuperaCassa(getIdAnag(p), selectedTurno.id);
+
+      (c.inserimenti ?? []).forEach((v) => {
+        if ((v.type || '').toUpperCase() === 'BAR')
+          barSpes += Math.abs(Number(v.value));
+      });
+    }
+
+    alert(`Contante rimasto in cassa (solo BAR): € ${barSpes.toFixed(2)}`);
+  };
+
 
   //  PDF riepilogo turno
   const handleTurnoPdf = async () => {
@@ -317,6 +339,7 @@ const fetchDettagli = async (idTurno) => {
         togglePdf={togglePdf}
         toggleSelectors={() => setShowSelectors((s) => !s)}
         onTurnoPdf={handleTurnoPdf}        /* 👈 nuovo prop */
+        onCashCalc={calcCashRemaining}
       />
 
       <div className="pt-20" />
